@@ -2,3 +2,6 @@ node_modules/
 *.log
 .DS_Store
 dist/
+
+# Bundles de respaldo: se generan fuera del repo
+*.bundle
