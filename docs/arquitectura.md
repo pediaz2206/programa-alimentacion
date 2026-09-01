@@ -1,4 +1,4 @@
-# Arquitectura
+# Arquitectura de En Punto
 
 ## Decision de fondo
 
@@ -109,6 +109,7 @@ sobre supuestos que pueden salir mal.
 
 - [x] `packages/core` — motor de reglas, validacion, balance diario, lista de compras
 - [x] CLI de vista previa (`npm run hoy`)
+- [x] Vista HTML autocontenida (`npm run vista`)
 - [x] Esquema de Supabase con RLS
 - [ ] Transcripcion de los PDF reales al formato `NutritionPlan`
 - [ ] `apps/web` — PWA

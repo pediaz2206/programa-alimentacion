@@ -1,4 +1,8 @@
-# Programa de alimentacion
+# En Punto
+
+> **En punto**: a la hora exacta ("las 12 en punto") y en el punto justo de coccion
+> ("en su punto"). El producto hace las dos cosas: te avisa en el momento preciso y
+> te dice si tenes todo listo para cocinar.
 
 Asistente basado en reglas que convierte el plan de la nutricionista en recordatorios
 accionables: te avisa a la hora de cada comida con las opciones concretas de ese momento,

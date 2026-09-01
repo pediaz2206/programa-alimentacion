@@ -1,8 +1,8 @@
 {
-  "name": "programa-alimentacion",
+  "name": "en-punto",
   "private": true,
   "version": "0.1.0",
-  "description": "Asistente de alimentacion basado en reglas: convierte el plan de la nutricionista en recordatorios accionables",
+  "description": "En Punto: convierte el plan de la nutricionista en recordatorios accionables, en el momento justo",
   "workspaces": [
     "packages/*"
   ],
@@ -10,7 +10,8 @@
     "test": "node scripts/check-node.mjs && node --experimental-strip-types --test packages/core/test/*.test.ts",
     "hoy": "node scripts/check-node.mjs && node --experimental-strip-types packages/core/src/cli.ts",
     "typecheck": "tsc",
-    "check": "npm run typecheck && npm test"
+    "check": "npm run typecheck && npm test",
+    "vista": "node scripts/check-node.mjs && node --experimental-strip-types scripts/build-vista.ts"
   },
   "engines": {
     "node": ">=22.6"
@@ -18,5 +19,6 @@
   "devDependencies": {
     "@types/node": "^26.4.1",
     "typescript": "^5.9.3"
-  }
+  },
+  "type": "module"
 }
