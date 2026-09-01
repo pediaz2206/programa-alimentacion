@@ -1,0 +1,21 @@
+{
+  "planId": "plan-recomposicion-v1",
+  "defaultPrepLeadMinutes": 30,
+  "optionsPerSuggestion": 3,
+  "excludeTags": [],
+  "fasting": {
+    "enabled": true,
+    "protocol": "16:8",
+    "eatingWindowStart": "12:00",
+    "eatingWindowHours": 8,
+    "closingWarningMinutes": 60
+  },
+  "slots": [
+    { "slotId": "desayuno", "enabled": false },
+    { "slotId": "colacion-am", "enabled": false },
+    { "slotId": "almuerzo", "time": "12:30", "prepLeadMinutes": 45 },
+    { "slotId": "merienda", "time": "16:30" },
+    { "slotId": "colacion-pm", "time": "18:00" },
+    { "slotId": "cena", "time": "19:30", "prepLeadMinutes": 45 }
+  ]
+}

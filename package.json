@@ -1,0 +1,22 @@
+{
+  "name": "programa-alimentacion",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Asistente de alimentacion basado en reglas: convierte el plan de la nutricionista en recordatorios accionables",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "node --experimental-strip-types --test packages/core/test/*.test.ts",
+    "hoy": "node --experimental-strip-types packages/core/src/cli.ts",
+    "typecheck": "tsc",
+    "check": "npm run typecheck && npm test"
+  },
+  "engines": {
+    "node": ">=22.6"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "typescript": "^5.9.3"
+  }
+}
