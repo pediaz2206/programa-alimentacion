@@ -81,6 +81,30 @@ relacional es lo que se consulta y agrega: los registros de comidas (`meal_logs`
 Cuando el modelo se estabilice, las consultas frecuentes se pueden materializar en
 columnas generadas sin cambiar la forma de escribir.
 
+## Pendiente de definir: los dos tipos de usuario
+
+El producto tiene dos roles, no uno: **quien come** y **la nutricionista**. Todavia no esta
+disenado, pero conviene registrar por que no es un detalle que se agrega despues sin costo.
+
+La decision que carga peso es **de quien es el plan**. Hoy `plans.owner_id` significa "es
+mio" y las policies de RLS dicen "solo ves lo tuyo". Eso alcanza para un usuario solo. Si
+la nutricionista escribe planes para varias personas, un plan pasa a tener dos partes
+distintas: quien lo redacta y quien lo sigue. Eso no es una columna extra, es otro modelo
+de permisos: hace falta una relacion profesional-paciente y policies que la consulten.
+Migrar de un modelo al otro con datos adentro implica reescribir todas las policies.
+
+Lo que hace falta saber antes de modelarlo, y que no conviene adivinar:
+
+- La nutricionista, escribe el plan dentro de la app o sigue mandando PDF? Cambia si el
+  editor de planes es una feature del producto o solo un importador.
+- Ve los registros de comidas de sus pacientes? Ahi aparece consentimiento y privacidad
+  de datos de salud, que es una conversacion aparte.
+- Un paciente puede tener planes de dos profesionales a la vez?
+
+Mientras no haya respuestas, el esquema queda como esta: un solo rol, RLS simple. Es
+preferible una migracion consciente mas adelante a un modelo de permisos inventado ahora
+sobre supuestos que pueden salir mal.
+
 ## Estado
 
 - [x] `packages/core` — motor de reglas, validacion, balance diario, lista de compras
@@ -90,3 +114,4 @@ columnas generadas sin cambiar la forma de escribir.
 - [ ] `apps/web` — PWA
 - [ ] Netlify Function de push + registro de suscripciones
 - [ ] Google SSO
+- [ ] Modelo de dos roles (paciente / nutricionista) - ver seccion anterior
