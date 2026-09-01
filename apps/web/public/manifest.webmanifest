@@ -1,0 +1,10 @@
+{
+  "name": "En Punto",
+  "short_name": "En Punto",
+  "description": "Tu plan de alimentación, en el momento justo",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F7F1",
+  "theme_color": "#F5F7F1",
+  "icons": []
+}

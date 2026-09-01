@@ -6,3 +6,5 @@ dist/
 # Bundles de respaldo: se generan fuera del repo
 *.bundle
 apps/vista/salida/
+apps/web/.env
+apps/web/dist/

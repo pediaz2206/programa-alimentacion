@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "description": "En Punto: convierte el plan de la nutricionista en recordatorios accionables, en el momento justo",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "test": "node scripts/check-node.mjs && node --experimental-strip-types --test packages/core/test/*.test.ts",
@@ -12,7 +13,9 @@
     "typecheck": "tsc",
     "check": "npm run typecheck && npm test",
     "vista": "node scripts/check-node.mjs && node --experimental-strip-types scripts/build-vista.ts",
-    "test:db": "bash supabase/test/correr.sh"
+    "test:db": "bash supabase/test/correr.sh",
+    "dev": "npm run dev --workspace @pa/web",
+    "build": "npm run build --workspace @pa/web"
   },
   "engines": {
     "node": ">=22.6"

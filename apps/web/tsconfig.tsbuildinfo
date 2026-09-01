@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/componentes/Aviso.tsx","./src/componentes/Dial.tsx","./src/lib/datos.ts","./src/lib/registro.ts","./src/lib/supabase.ts","./src/pantallas/Ajustes.tsx","./src/pantallas/Hoy.tsx","./src/pantallas/Plan.tsx","./src/pantallas/Registro.tsx","./vite.config.ts"],"version":"5.9.3"}

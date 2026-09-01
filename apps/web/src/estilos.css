@@ -1,0 +1,231 @@
+/*
+ * Claro por defecto y a proposito: la comida se ve mal sobre fondo negro y las
+ * fotos del registro quedan sucias. El modo oscuro existe, pero es una eleccion
+ * explicita: la app no sigue el tema del sistema operativo.
+ */
+:root {
+  --papel: #F5F7F1;
+  --superficie: #FFFFFF;
+  --superficie-2: #EEF1E9;
+  --tinta: #131A15;
+  --tenue: #5F6A61;
+  --linea: #DDE3D7;
+  --verde: #2E6B4A;
+  --verde-suave: #E4EFE7;
+  --indigo: #3E4E8F;
+  --indigo-suave: #E5E8F4;
+  --ambar: #9C6F17;
+  --ambar-suave: #F6EDD8;
+  --g-proteinas: #B0523B;
+  --g-hidratos: #B4862F;
+  --g-vegetales: #4A8B57;
+  --g-frutas: #9E4479;
+  --g-grasas: #7A7534;
+  --sombra: 0 1px 2px rgba(19, 26, 21, .05), 0 8px 24px -12px rgba(19, 26, 21, .18);
+  --r: 14px;
+  --barra-alto: 62px;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --papel: #0E120F;
+  --superficie: #171D18;
+  --superficie-2: #1E251F;
+  --tinta: #E8ECE4;
+  --tenue: #98A297;
+  --linea: #2A332B;
+  --verde: #68C08E;
+  --verde-suave: #17301F;
+  --indigo: #8C9AE2;
+  --indigo-suave: #1B1F33;
+  --ambar: #D9A544;
+  --ambar-suave: #2E2612;
+  --g-proteinas: #DE8065;
+  --g-hidratos: #DDAC4F;
+  --g-vegetales: #6FBE7E;
+  --g-frutas: #D077AB;
+  --g-grasas: #B0A94F;
+  --sombra: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--papel);
+  color: var(--tinta);
+  font-family: Archivo, "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0; text-wrap: balance; }
+.mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+.app { display: flex; flex-direction: column; min-height: 100%; }
+.contenido {
+  flex: 1;
+  max-width: 460px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 18px 16px calc(var(--barra-alto) + env(safe-area-inset-bottom) + 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ------------------------------------------------------ navegacion ------ */
+.barra {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: calc(var(--barra-alto) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: color-mix(in srgb, var(--superficie) 92%, transparent);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--linea);
+  z-index: 10;
+}
+.barra button {
+  border: 0; background: none; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  font: inherit; font-size: 11px; font-weight: 600;
+  color: var(--tenue); padding: 0;
+}
+.barra button svg { width: 21px; height: 21px; }
+.barra button[aria-current="page"] { color: var(--verde); }
+.barra button:focus-visible { outline: 2px solid var(--verde); outline-offset: -3px; }
+
+/* ---------------------------------------------------------- tarjetas ---- */
+.tarjeta {
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+  border-radius: var(--r);
+  box-shadow: var(--sombra);
+  padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.tarjeta.destacada { border-left: 3px solid var(--verde); }
+.encabezado-seccion {
+  font-size: 12px; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--tenue); font-weight: 600; font-family: Archivo, sans-serif;
+}
+.titulo-pantalla { font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+.sub { font-size: 12.5px; color: var(--tenue); }
+.nota { font-size: 12.5px; color: var(--tenue); line-height: 1.45; margin: 0; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+  padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+}
+.chip-verde { background: var(--verde-suave); color: var(--verde); }
+.chip-indigo { background: var(--indigo-suave); color: var(--indigo); }
+.chip-ambar { background: var(--ambar-suave); color: var(--ambar); }
+
+.boton {
+  font: inherit; font-size: 14px; font-weight: 600;
+  padding: 10px 15px; border-radius: 10px;
+  border: 1px solid var(--linea); background: var(--superficie); color: var(--tinta);
+  cursor: pointer;
+}
+.boton:hover:not(:disabled) { background: var(--superficie-2); }
+.boton:disabled { opacity: .55; cursor: default; }
+.boton:focus-visible { outline: 2px solid var(--verde); outline-offset: 1px; }
+.boton-lleno { background: var(--verde); border-color: var(--verde); color: var(--papel); }
+:root[data-theme="dark"] .boton-lleno { color: #0E120F; }
+.boton-ancho { width: 100%; }
+
+.aviso {
+  display: flex; gap: 8px; align-items: flex-start;
+  font-size: 12.5px; line-height: 1.45;
+  background: var(--ambar-suave); color: var(--ambar);
+  border-radius: 9px; padding: 9px 11px;
+}
+.aviso svg { flex: none; width: 14px; height: 14px; margin-top: 2px; }
+
+.punto { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block; }
+.barra-progreso { height: 8px; border-radius: 4px; background: var(--superficie-2); overflow: hidden; }
+.barra-progreso i { display: block; height: 100%; border-radius: 4px; transition: width .35s cubic-bezier(.4,0,.2,1); }
+
+/* --------------------------------------------------------------- dial --- */
+.dial-envoltura { position: relative; align-self: center; width: 250px; height: 250px; }
+.dial-envoltura svg { display: block; width: 100%; height: 100%; }
+.dial-centro {
+  position: absolute; inset: 0; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 1px;
+}
+.dial-centro > * { max-width: 116px; }
+.dial-centro .etiqueta { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--tenue); font-weight: 600; }
+.dial-centro .grande { font-family: "Bricolage Grotesque", Archivo, sans-serif; font-size: 26px; font-weight: 800; letter-spacing: -.03em; line-height: 1.08; }
+.dial-centro .chico { font-size: 11px; color: var(--tenue); line-height: 1.3; margin-top: 3px; }
+
+/* --------------------------------------------------------- linea dia --- */
+.riel { display: flex; flex-direction: column; }
+.fila { display: grid; grid-template-columns: 46px 20px 1fr; gap: 10px; align-items: start; }
+.fila .hora { font-size: 13px; color: var(--tenue); padding-top: 11px; }
+.eje { position: relative; display: flex; justify-content: center; padding-top: 16px; }
+.eje::before { content: ""; position: absolute; top: 0; bottom: -4px; width: 1.5px; background: var(--linea); }
+.fila:first-child .eje::before { top: 16px; }
+.fila:last-child .eje::before { bottom: auto; height: 16px; }
+.marca { width: 9px; height: 9px; border-radius: 50%; background: var(--linea); position: relative; z-index: 1; border: 2px solid var(--papel); }
+.fila.pasado .hora, .fila.pasado .cuerpo { opacity: .5; }
+.fila.actual .marca { background: var(--verde); box-shadow: 0 0 0 4px var(--verde-suave); }
+.fila.ayuno .marca { background: var(--indigo); }
+.fila.libre .marca { background: var(--ambar); }
+.cuerpo { padding: 8px 0 14px; }
+.cuerpo .que { font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; }
+.cuerpo .detalle { font-size: 12.5px; color: var(--tenue); margin-top: 2px; line-height: 1.45; }
+.sello {
+  display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--ambar); background: var(--ambar-suave);
+  padding: 2px 7px; border-radius: 5px; margin-left: 7px; vertical-align: 1px;
+}
+.opciones { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.opcion { font-size: 12px; padding: 3px 8px; border-radius: 7px; border: 1px solid var(--linea); color: var(--tenue); background: var(--superficie); }
+.opcion.elegida { border-color: var(--verde); color: var(--verde); background: var(--verde-suave); font-weight: 600; }
+
+/* ------------------------------------------------------------- listas --- */
+.lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.item {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  background: none; border: 0; padding: 8px; border-radius: 9px; cursor: pointer;
+  font: inherit; color: inherit;
+}
+.item:hover { background: var(--superficie-2); }
+.item:focus-visible { outline: 2px solid var(--verde); outline-offset: 1px; }
+.caja { width: 17px; height: 17px; border-radius: 5px; border: 1.5px solid var(--linea); flex: none; display: grid; place-items: center; }
+.caja svg { width: 11px; height: 11px; opacity: 0; }
+.item[aria-pressed="true"] .caja { background: var(--verde); border-color: var(--verde); }
+.item[aria-pressed="true"] .caja svg { opacity: 1; }
+.item[aria-pressed="true"] .nombre { text-decoration: line-through; color: var(--tenue); }
+.nombre { flex: 1; font-size: 14px; }
+.cant { font-size: 12.5px; color: var(--tenue); }
+.franja { width: 3px; height: 15px; border-radius: 2px; flex: none; }
+
+.eq-grupo { display: flex; flex-direction: column; gap: 6px; }
+.eq-lista { list-style: none; margin: 0; padding: 0; }
+.eq-lista li {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  font-size: 13px; padding: 5px 0; border-bottom: 1px solid var(--linea);
+}
+.eq-lista li:last-child { border-bottom: 0; }
+.eq-prot { color: var(--g-proteinas); font-weight: 600; white-space: nowrap; }
+.eq-cant { color: var(--tenue); white-space: nowrap; }
+
+.campo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--linea); }
+.campo:last-child { border-bottom: 0; }
+.campo label { font-size: 14px; }
+.campo input[type="time"], .campo input[type="number"], .campo select {
+  font: inherit; font-family: "IBM Plex Mono", monospace; font-size: 14px;
+  padding: 6px 9px; border-radius: 8px; border: 1px solid var(--linea);
+  background: var(--superficie); color: var(--tinta);
+}
+.campo input:focus-visible, .campo select:focus-visible { outline: 2px solid var(--verde); outline-offset: 1px; }
+
+.foto-previa { width: 100%; border-radius: 10px; display: block; border: 1px solid var(--linea); }
+.vacio { text-align: center; color: var(--tenue); font-size: 13.5px; padding: 6px 10px; margin: 0; line-height: 1.5; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
