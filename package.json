@@ -7,8 +7,8 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "node --experimental-strip-types --test packages/core/test/*.test.ts",
-    "hoy": "node --experimental-strip-types packages/core/src/cli.ts",
+    "test": "node scripts/check-node.mjs && node --experimental-strip-types --test packages/core/test/*.test.ts",
+    "hoy": "node scripts/check-node.mjs && node --experimental-strip-types packages/core/src/cli.ts",
     "typecheck": "tsc",
     "check": "npm run typecheck && npm test"
   },

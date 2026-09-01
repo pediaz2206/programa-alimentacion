@@ -46,6 +46,16 @@ Reglas que ya aplica:
 - **Detecta conflictos**: avisa si una comida cae fuera de la ventana de ayuno.
 - **Lista de compras** consolidada, que suma cantidades y no mezcla unidades incompatibles.
 
+## Requisitos
+
+**Node >= 22.6** (version en `.nvmrc`). El codigo corre TypeScript sin compilar usando
+`--experimental-strip-types`, que existe desde esa version. Node 20 quedo sin soporte el
+30 de abril de 2026.
+
+```bash
+nvm install 22 && nvm use 22
+```
+
 ## Comandos
 
 ```bash
