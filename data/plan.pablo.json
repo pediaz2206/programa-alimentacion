@@ -1761,5 +1761,15 @@
         }
       ]
     }
-  ]
+  ],
+  "freeMeals": {
+    "perWeek": 4,
+    "totalPerWeek": 21,
+    "maxPerDay": 2,
+    "notes": [
+      "4 de las 21 comidas semanales pueden salirse del plan.",
+      "Controlar las porciones aunque sea comida del 20%.",
+      "Evitar hacer todas las comidas del 20% el mismo día."
+    ]
+  }
 }

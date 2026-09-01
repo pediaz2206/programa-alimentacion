@@ -6,7 +6,7 @@
   "fasting": {
     "enabled": true,
     "protocol": "16:8",
-    "eatingWindowStart": "12:00",
+    "eatingWindowStart": "13:30",
     "eatingWindowHours": 8,
     "closingWarningMinutes": 60
   },
@@ -17,12 +17,12 @@
     },
     {
       "slotId": "almuerzo",
-      "time": "13:00",
+      "time": "13:30",
       "prepLeadMinutes": 45
     },
     {
       "slotId": "merienda",
-      "time": "17:00"
+      "time": "18:30"
     },
     {
       "slotId": "colacion",
@@ -30,8 +30,22 @@
     },
     {
       "slotId": "cena",
-      "time": "20:00",
+      "time": "21:30",
       "prepLeadMinutes": 45
+    }
+  ],
+  "freeMeals": [
+    {
+      "weekday": 6,
+      "slotId": "almuerzo"
+    },
+    {
+      "weekday": 6,
+      "slotId": "cena"
+    },
+    {
+      "weekday": 0,
+      "slotId": "almuerzo"
     }
   ]
 }

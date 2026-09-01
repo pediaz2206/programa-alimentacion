@@ -187,6 +187,24 @@ h1{font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; marg
 .plato-datos span{display:flex; align-items:center; gap:7px; color:var(--tenue)}
 .plato-datos b{color:var(--tinta); font-weight:600; font-family:"IBM Plex Mono",monospace}
 
+.aviso{
+  display:flex; gap:8px; align-items:flex-start; font-size:12.5px; line-height:1.45;
+  background:var(--ambar-suave); color:var(--ambar); border-radius:9px; padding:9px 11px;
+}
+.aviso svg{flex:none; width:14px; height:14px; margin-top:2px}
+.riel .aviso{margin-top:7px}
+.libres{display:flex; flex-wrap:wrap; gap:6px}
+.libre-chip{
+  font-size:12.5px; padding:5px 10px; border-radius:8px;
+  background:var(--ambar-suave); color:var(--ambar); font-weight:500;
+}
+.libre-chip.vacante{background:none; border:1px dashed var(--linea); color:var(--tenue); font-weight:400}
+.fila.libre .marca{background:var(--ambar)}
+.cuerpo .sello-libre{
+  display:inline-block; font-size:10.5px; font-weight:700; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--ambar); background:var(--ambar-suave);
+  padding:2px 7px; border-radius:5px; margin-left:7px; vertical-align:1px;
+}
 .nota-seccion{font-size:12.5px; color:var(--tenue); margin:0; line-height:1.45}
 .composicion{display:flex; flex-direction:column; gap:11px}
 .comp-fila{display:flex; flex-direction:column; gap:3px}
@@ -271,6 +289,15 @@ h1{font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; marg
     <h3 style="margin:0">Equivalencias</h3>
     <p class="nota-seccion">Dentro de cada grupo, las opciones son intercambiables entre sí.</p>
     <div class="equivalencias" id="equivalencias"></div>
+  </section>
+
+  <section class="balance" id="sec-libres" hidden>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+      <h3 style="margin:0">Comidas del 20%</h3>
+      <span class="chip chip-ambar" id="chip-libres"></span>
+    </div>
+    <p class="nota-seccion" id="libres-resumen"></p>
+    <div class="libres" id="libres"></div>
   </section>
 
   <section class="balance" id="sec-reglas" hidden>
@@ -453,6 +480,7 @@ h1{font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; marg
     } else {
       h += '<div class="plato-linea">' + e.body + '</div>';
     }
+    h += pintarAvisos(e.warnings);
     cont.innerHTML = h;
     actualizarCuentaIng();
   }
@@ -469,6 +497,15 @@ h1{font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; marg
   }
 
   /* ---------- riel del dia ---------- */
+  function pintarAvisos(warnings){
+    if(!warnings || !warnings.length) return '';
+    return warnings.map(function(w){
+      return '<div class="aviso">'
+        + '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l6.5 12h-13z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.2v3.4M8 11.6v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
+        + '<span>' + w + '</span></div>';
+    }).join('');
+  }
+
   var ETIQUETA = {
     'prep-check':'Chequeo de ingredientes', 'meal':'Comida',
     'fast-start':'Empieza el ayuno', 'fast-end':'Se abre la ventana', 'fast-closing':'La ventana se cierra'
@@ -480,10 +517,12 @@ h1{font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; marg
       if(e.minutes <= AHORA) clases.push('pasado');
       if(prox && e === prox) clases.push('actual');
       if(e.kind.indexOf('fast') === 0) clases.push('ayuno');
+      if(e.freeMeal) clases.push('libre');
       var s = '<div class="' + clases.join(' ') + '">';
       s += '<div class="hora mono">' + e.time + '</div>';
       s += '<div class="eje"><span class="marca"></span></div>';
-      s += '<div class="cuerpo"><div class="qué">' + e.title + '</div>';
+      s += '<div class="cuerpo"><div class="qué">' + e.title
+        + (e.freeMeal ? '<span class="sello-libre">20%</span>' : '') + '</div>';
       if(e.kind === 'meal' && e.suggestions && e.suggestions.length){
         var elegida = estado.comidas[e.slotId];
         s += '<div class="opciones">' + e.suggestions.map(function(o){
@@ -492,6 +531,7 @@ h1{font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; marg
       } else {
         s += '<div class="detalle">' + e.body + '</div>';
       }
+      s += pintarAvisos(e.warnings);
       s += '</div></div>';
       return s;
     }).join('');
@@ -634,6 +674,29 @@ h1{font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; marg
     document.getElementById('sec-equivalencias').hidden = false;
   }
 
+  function pintarLibres(){
+    var f = D.freeMeals;
+    if(!f || !f.perWeek) return;
+    var DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    var nombreSlot = {};
+    (D.plan.slots || []).forEach(function(s){ nombreSlot[s.id] = s.name; });
+
+    var chips = f.planned.map(function(x){
+      return '<span class="libre-chip">' + DIAS[x.weekday] + ' · ' + (nombreSlot[x.slotId] || x.slotId) + '</span>';
+    });
+    for(var i = 0; i < f.unassigned; i++){
+      chips.push('<span class="libre-chip vacante">Sin ubicar</span>');
+    }
+    document.getElementById('libres').innerHTML = chips.join('');
+    document.getElementById('chip-libres').textContent =
+      f.planned.length + ' de ' + f.perWeek + ' usadas';
+    document.getElementById('libres-resumen').innerHTML = f.warnings.length
+      ? f.warnings.join(' ')
+      : f.perWeek + ' de las ' + (f.totalPerWeek || 21) + ' comidas de la semana pueden salirse del plan. '
+        + 'Moverlas es parte del plan: elegí cuándo te sirven.';
+    document.getElementById('sec-libres').hidden = false;
+  }
+
   function pintarReglas(){
     var reglas = D.plan.guidelines || [];
     if(!reglas.length) return;
@@ -653,6 +716,7 @@ h1{font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; marg
     aviso.hidden = false;
   }
   pintarComposicion();
+  pintarLibres();
   pintarEquivalencias();
   pintarReglas();
   dibujarDial();

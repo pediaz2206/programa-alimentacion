@@ -81,6 +81,19 @@ relacional es lo que se consulta y agrega: los registros de comidas (`meal_logs`
 Cuando el modelo se estabilice, las consultas frecuentes se pueden materializar en
 columnas generadas sin cambiar la forma de escribir.
 
+## Registro de comidas con foto
+
+Reemplaza el ida y vuelta de fotos por WhatsApp. Cada comida registrada guarda
+que se comio, cuanta proteina aporto, si fue del 20%, una nota y opcionalmente
+una foto.
+
+La foto va a Supabase Storage en un bucket privado, y en `meal_logs` queda solo
+la ruta. Dos motivos: los binarios grandes en Postgres encarecen backups y
+consultas, y el storage ya resuelve permisos, CDN y URLs firmadas que vencen.
+
+Esto convierte la decision de los dos roles en urgente, no diferible: el sentido
+de registrar la comida es que **alguien mas la mire**. Ver la seccion siguiente.
+
 ## Pendiente de definir: los dos tipos de usuario
 
 El producto tiene dos roles, no uno: **quien come** y **la nutricionista**. Todavia no esta
@@ -97,9 +110,21 @@ Lo que hace falta saber antes de modelarlo, y que no conviene adivinar:
 
 - La nutricionista, escribe el plan dentro de la app o sigue mandando PDF? Cambia si el
   editor de planes es una feature del producto o solo un importador.
-- Ve los registros de comidas de sus pacientes? Ahi aparece consentimiento y privacidad
-  de datos de salud, que es una conversacion aparte.
 - Un paciente puede tener planes de dos profesionales a la vez?
+
+Y desde que existe el registro con foto, estas dejan de ser hipoteticas:
+
+- La nutricionista ve las fotos de las comidas de sus pacientes? Es el motivo por el
+  que existe la feature, asi que la respuesta condiciona el bucket, las policies del
+  storage y el modelo de permisos entero.
+- Como se otorga y se revoca ese acceso? Un paciente que deja de atenderse con ella
+  tiene que poder cortarlo, y las fotos ya subidas no deberian quedar visibles.
+- Hace falta consentimiento explicito? Son datos de salud: conviene registrar cuando
+  se dio y poder mostrarlo.
+
+Mientras no haya respuestas, el bucket es estrictamente privado: cada quien ve solo
+sus fotos. Abrirlo despues es una migracion de policies; abrirlo de mas ahora es una
+fuga de datos de salud.
 
 Mientras no haya respuestas, el esquema queda como esta: un solo rol, RLS simple. Es
 preferible una migracion consciente mas adelante a un modelo de permisos inventado ahora

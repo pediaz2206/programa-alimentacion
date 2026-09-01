@@ -38,20 +38,33 @@ create table if not exists public.configs (
 
 -- Que se comio realmente. Es lo unico verdaderamente relacional: se consulta,
 -- se agrega y se grafica.
+--
+-- La foto es el reemplazo de mandar imagenes por WhatsApp: se guarda en
+-- Supabase Storage (bucket privado "meal-photos") y aca queda solo la ruta.
+-- Las fotos no van en la base: son binarios grandes y el storage ya resuelve
+-- permisos, CDN y URLs firmadas.
 create table if not exists public.meal_logs (
-  id         uuid primary key default gen_random_uuid(),
-  owner_id   uuid not null references auth.users (id) on delete cascade,
-  local_date date not null,
-  slot_id    text not null,
-  option_id  text,
-  -- Snapshot de las porciones al momento de registrar: si el plan cambia
+  id           uuid primary key default gen_random_uuid(),
+  owner_id     uuid not null references auth.users (id) on delete cascade,
+  local_date   date not null,
+  slot_id      text not null,
+  option_id    text,
+  -- Snapshot de lo consumido al momento de registrar: si el plan cambia
   -- despues, el historial no se reescribe solo.
-  portions   jsonb,
-  note       text,
-  logged_at  timestamptz not null default now(),
+  portions     jsonb,
+  protein_grams numeric,
+  -- Comida del 20%: no sigue el plan, y cuenta contra el presupuesto semanal.
+  is_free_meal boolean not null default false,
+  note         text,
+  -- Ruta dentro del bucket, no una URL: las URLs se firman al leer y vencen.
+  photo_path   text,
+  logged_at    timestamptz not null default now(),
   unique (owner_id, local_date, slot_id)
 );
 create index if not exists meal_logs_owner_date_idx on public.meal_logs (owner_id, local_date desc);
+-- Para contar cuantas comidas del 20% se usaron en la semana.
+create index if not exists meal_logs_free_idx
+  on public.meal_logs (owner_id, local_date desc) where is_free_meal;
 
 -- Suscripciones Web Push. Un usuario puede tener varias (celular, notebook).
 create table if not exists public.push_subscriptions (
@@ -102,3 +115,25 @@ begin
       t, col);
   end loop;
 end $$;
+
+-- Bucket privado para las fotos de las comidas. Sin acceso publico: se leen
+-- con URLs firmadas de corta duracion.
+insert into storage.buckets (id, name, public)
+values ('meal-photos', 'meal-photos', false)
+on conflict (id) do nothing;
+
+-- Cada quien escribe y lee solo dentro de su propia carpeta (<uid>/...).
+-- Que la nutricionista pueda ver estas fotos exige el modelo de dos roles que
+-- todavia no esta definido; ver docs/arquitectura.md.
+do $$
+begin
+  execute $p$
+    drop policy if exists meal_photos_own on storage.objects;
+    $p$;
+exception when others then null;
+end $$;
+
+create policy meal_photos_own on storage.objects
+  for all
+  using (bucket_id = 'meal-photos' and (storage.foldername(name))[1] = auth.uid()::text)
+  with check (bucket_id = 'meal-photos' and (storage.foldername(name))[1] = auth.uid()::text);

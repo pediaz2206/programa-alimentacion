@@ -1,8 +1,15 @@
 import { computeDailyBalance, remainingPortions, sumPortions } from './balance.ts';
 import { describePlate, plateFor } from './plate.ts';
 import { checklistFor, formatIngredient } from './shopping.ts';
+import { isFreeMeal } from './libres.ts';
 import { dayIndexOf, suggestOptions } from './selection.ts';
-import { addMinutes, formatTime, humanizeMinutes, isWithinWindow, parseTime } from './time.ts';
+import { formatTime, humanizeMinutes, isWithinWindow, minutesUntil, parseTime } from './time.ts';
+/**
+ * Cuanto se asume que dura una comida. Sirve para avisar cuando una comida
+ * arranca tan cerca del cierre de la ventana que se va a terminar afuera.
+ */
+const DURACION_COMIDA_MINUTOS = 30;
+
 import type {
   MealOption,
   MealSlot,
@@ -54,6 +61,7 @@ export function buildDaySchedule(
   date: Date,
 ): ScheduledEvent[] {
   const events: ScheduledEvent[] = [];
+  const weekday = date.getDay() as Weekday;
   const slots = resolveSlots(plan, config, date);
   const dayIndex = dayIndexOf(date);
 
@@ -66,8 +74,9 @@ export function buildDaySchedule(
   const projected: Array<{ option: MealOption; minutes: number }> = [];
 
   for (const { slot, minutes, prepLeadMinutes } of slots) {
+    const libre = isFreeMeal(config, weekday, slot.id);
     const balance = computeDailyBalance(plan, projected.map((p) => p.option));
-    const suggestions = suggestOptions(plan, config, slot.id, {
+    const suggestions = libre ? [] : suggestOptions(plan, config, slot.id, {
       dayIndex,
       remaining: remainingPortions(balance),
       avoidIds: projected.map((p) => p.option.id),
@@ -76,14 +85,28 @@ export function buildDaySchedule(
 
     const time = formatTime(minutes);
     const cierre = (windowStart + windowMinutes) % 1440;
-    const outsideWindow =
-      fasting && !isWithinWindow(minutes, windowStart, windowMinutes) && minutes !== cierre;
-    const warnings = outsideWindow
-      ? [
-          `${slot.name} (${time}) cae fuera de la ventana de alimentacion ` +
-            `(${fasting.eatingWindowStart}-${addMinutes(fasting.eatingWindowStart, windowMinutes)}).`,
-        ]
-      : undefined;
+    const dentro = fasting
+      ? isWithinWindow(minutes, windowStart, windowMinutes) || minutes === cierre
+      : true;
+
+    const avisos: string[] = [];
+    if (fasting && !dentro) {
+      avisos.push(
+        `${slot.name} (${time}) cae fuera de la ventana de alimentación ` +
+          `(${fasting.eatingWindowStart}-${formatTime(cierre)}).`,
+      );
+    } else if (fasting && !slot.isSnack) {
+      // Empezar a comer justo antes del cierre significa terminar afuera.
+      const margen = minutesUntil(minutes, cierre);
+      if (margen < DURACION_COMIDA_MINUTOS) {
+        avisos.push(
+          `${slot.name} arranca a las ${time} y la ventana cierra a las ${formatTime(cierre)}: ` +
+            `vas a terminar de comer fuera de la ventana. ` +
+            `Adelantá la comida o corré el inicio de la ventana.`,
+        );
+      }
+    }
+    const warnings = avisos.length > 0 ? avisos : undefined;
 
     if (prepLeadMinutes > 0 && suggestions.length > 0) {
       const primary = suggestions[0]!;
@@ -109,10 +132,13 @@ export function buildDaySchedule(
       time,
       minutes,
       title: `${slot.name} - ${time}`,
-      body: mealBody(plan, slot, suggestions),
+      body: libre
+        ? 'Comida del 20%: libre. Controlá igual las porciones.'
+        : mealBody(plan, slot, suggestions),
       slotId: slot.id,
       suggestions,
       warnings,
+      ...(libre ? { freeMeal: true } : {}),
     });
 
     if (suggestions.length > 0) projected.push({ option: suggestions[0]!, minutes });

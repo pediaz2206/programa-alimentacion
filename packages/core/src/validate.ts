@@ -104,6 +104,18 @@ export function validateConfig(plan: NutritionPlan, config: UserConfig): string[
   }
   if (config.optionsPerSuggestion < 1) errors.push('optionsPerSuggestion debe ser >= 1.');
 
+  for (const libre of config.freeMeals ?? []) {
+    if (!slotIds.has(libre.slotId)) {
+      errors.push(`Comidas del 20%: momento inexistente "${libre.slotId}".`);
+    }
+    if (libre.weekday < 0 || libre.weekday > 6) {
+      errors.push(`Comidas del 20%: día de semana inválido "${libre.weekday}".`);
+    }
+  }
+  if (config.freeMeals && !plan.freeMeals) {
+    errors.push('La config asigna comidas del 20% pero el plan no las contempla.');
+  }
+
   return errors;
 }
 

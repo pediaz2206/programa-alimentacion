@@ -121,6 +121,8 @@ export interface NutritionPlan {
   guidelines?: string[];
   /** Objetivo diario de proteina en gramos, si el plan lo fija asi. */
   proteinTargetGrams?: number;
+  /** Politica de comidas libres, si el plan contempla alguna. */
+  freeMeals?: FreeMealPolicy;
 }
 
 export interface SlotConfig {
@@ -155,6 +157,41 @@ export interface UserConfig {
   excludeTags?: string[];
   /** Cuantas opciones ofrecer por comida. */
   optionsPerSuggestion: number;
+  /** Donde se ubicaron las comidas libres esta semana. */
+  freeMeals?: FreeMealSlot[];
+}
+
+/**
+ * Las "comidas del 20%": las que pueden salirse del plan.
+ *
+ * Se modela como presupuesto semanal y no como dias fijos, porque el plan las
+ * define por cantidad ("4 de 21") y quien come decide cuando usarlas.
+ */
+export interface FreeMealPolicy {
+  /** Cuantas comidas libres entran por semana. */
+  perWeek: number;
+  /** Total de comidas de la semana, para expresar la proporcion. */
+  totalPerWeek?: number;
+  /** Tope por dia. El plan pide no acumularlas todas el mismo dia. */
+  maxPerDay?: number;
+  notes?: string[];
+}
+
+/** Donde decidio ubicarlas quien come. Movible. */
+export interface FreeMealSlot {
+  weekday: Weekday;
+  slotId: string;
+}
+
+export interface FreeMealSummary {
+  perWeek: number;
+  totalPerWeek?: number;
+  planned: FreeMealSlot[];
+  /** Cuantas quedan sin asignar. */
+  unassigned: number;
+  /** Cuantas se pasaron del presupuesto, si se asignaron de mas. */
+  overBudget: number;
+  warnings: string[];
 }
 
 export type EventKind =
@@ -177,6 +214,8 @@ export interface ScheduledEvent {
   checklist?: Ingredient[];
   /** Conflictos detectados: comida fuera de la ventana de ayuno, etc. */
   warnings?: string[];
+  /** Esta comida esta marcada como del 20%: no sigue el plan. */
+  freeMeal?: boolean;
 }
 
 export interface GroupBalance {

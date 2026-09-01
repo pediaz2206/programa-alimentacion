@@ -7,6 +7,7 @@
  * Es un solo archivo autocontenido: se abre con doble clic, sin servidor.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { freeMealSummary } from '../packages/core/src/libres.ts';
 import { buildDaySchedule } from '../packages/core/src/schedule.ts';
 import { parseTime } from '../packages/core/src/time.ts';
 import { validateConfig, validatePlan } from '../packages/core/src/validate.ts';
@@ -47,6 +48,7 @@ const datos = {
   ahora,
   fecha: date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }),
   esEjemplo: planPath.includes('ejemplo'),
+  freeMeals: freeMealSummary(plan, config),
 };
 
 const plantilla = readFileSync('apps/vista/plantilla.html', 'utf8');

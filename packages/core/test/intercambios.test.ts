@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { computeDailyBalance, sumProtein } from '../src/balance.ts';
+import { freeMealSummary } from '../src/libres.ts';
 import { buildDaySchedule, describeFormula } from '../src/schedule.ts';
 import { validateConfig, validatePlan } from '../src/validate.ts';
 import type { MealOption, NutritionPlan, UserConfig } from '../src/types.ts';
@@ -95,18 +96,22 @@ test('las ideas cubren todos los momentos del plan', () => {
 test('una comida justo en la hora de cierre sigue estando dentro de la ventana', () => {
   const events = buildDaySchedule(plan, config, new Date('2026-09-02T12:00:00'));
   const cena = events.find((e) => e.kind === 'meal' && e.slotId === 'cena');
-  assert.equal(cena?.time, '20:00', 'la config pone la cena justo al cierre');
-  assert.equal(cena?.warnings, undefined, 'cerrar la ventana comiendo no es una infracción');
+  assert.equal(cena?.time, '21:30', 'la config pone la cena justo al cierre');
+  assert.doesNotMatch(
+    (cena?.warnings ?? []).join(' '),
+    /cae fuera de la ventana/,
+    'cerrar la ventana comiendo no es una infracción',
+  );
 });
 
 test('una comida pasada la hora de cierre si avisa', () => {
   const tarde: UserConfig = {
     ...config,
-    slots: config.slots.map((s) => (s.slotId === 'cena' ? { ...s, time: '20:30' } : s)),
+    slots: config.slots.map((s) => (s.slotId === 'cena' ? { ...s, time: '22:30' } : s)),
   };
   const cena = buildDaySchedule(plan, tarde, new Date('2026-09-02T12:00:00'))
     .find((e) => e.kind === 'meal' && e.slotId === 'cena');
-  assert.match(cena?.warnings?.[0] ?? '', /fuera de la ventana/);
+  assert.match(cena?.warnings?.[0] ?? '', /cae fuera de la ventana/);
 });
 
 test('las sugerencias empujan hacia el objetivo proteico', () => {
@@ -117,4 +122,75 @@ test('las sugerencias empujan hacia el objetivo proteico', () => {
     .filter((o): o is NonNullable<typeof o> => o != null);
   const total = elegidas.reduce((a, o) => a + (o.proteinGrams ?? 0), 0);
   assert.ok(total >= 100, `el día proyectado suma ${total} g de proteína, muy lejos de los 120`);
+});
+
+test('avisa cuando una comida arranca demasiado cerca del cierre de la ventana', () => {
+  const cena = buildDaySchedule(plan, config, new Date('2026-09-02T12:00:00'))
+    .find((e) => e.kind === 'meal' && e.slotId === 'cena');
+  assert.equal(cena?.time, '21:30');
+  assert.match(cena?.warnings?.[0] ?? '', /vas a terminar de comer fuera de la ventana/);
+});
+
+test('con margen suficiente no avisa nada (cena 20:30, cierre 21:30)', () => {
+  const holgado: UserConfig = {
+    ...config,
+    slots: config.slots.map((s) => (s.slotId === 'cena' ? { ...s, time: '20:30' } : s)),
+  };
+  const cena = buildDaySchedule(plan, holgado, new Date('2026-09-02T12:00:00'))
+    .find((e) => e.kind === 'meal' && e.slotId === 'cena');
+  assert.equal(cena?.warnings, undefined);
+});
+
+test('el presupuesto de comidas del 20% sale del plan', () => {
+  const resumen = freeMealSummary(plan, config);
+  assert.equal(resumen.perWeek, 4);
+  assert.equal(resumen.totalPerWeek, 21);
+  assert.equal(resumen.planned.length, 3);
+  assert.equal(resumen.unassigned, 1, 'queda una libre sin ubicar');
+  assert.equal(resumen.overBudget, 0);
+});
+
+test('avisa si se asignan más comidas del 20% que las permitidas', () => {
+  const pasado: UserConfig = {
+    ...config,
+    freeMeals: [
+      { weekday: 6, slotId: 'almuerzo' }, { weekday: 6, slotId: 'cena' },
+      { weekday: 0, slotId: 'almuerzo' }, { weekday: 0, slotId: 'cena' },
+      { weekday: 5, slotId: 'cena' },
+    ],
+  };
+  const resumen = freeMealSummary(plan, pasado);
+  assert.equal(resumen.overBudget, 1);
+  assert.ok(resumen.warnings.some((w) => w.includes('permite 4')));
+});
+
+test('avisa si se amontonan en un mismo día', () => {
+  const amontonadas: UserConfig = {
+    ...config,
+    freeMeals: [
+      { weekday: 6, slotId: 'almuerzo' }, { weekday: 6, slotId: 'merienda' }, { weekday: 6, slotId: 'cena' },
+    ],
+  };
+  const resumen = freeMealSummary(plan, amontonadas);
+  assert.ok(resumen.warnings.some((w) => w.includes('sábado') && w.includes('no juntar más de 2')));
+});
+
+test('la comida del 20% no propone platos del plan', () => {
+  const sabado = new Date('2026-09-05T12:00:00');
+  assert.equal(sabado.getDay(), 6);
+  const cena = buildDaySchedule(plan, config, sabado).find((e) => e.kind === 'meal' && e.slotId === 'cena');
+  assert.equal(cena?.freeMeal, true);
+  assert.deepEqual(cena?.suggestions, []);
+  assert.match(cena?.body ?? '', /Comida del 20%/);
+});
+
+test('un día normal no tiene comidas libres', () => {
+  const miercoles = new Date('2026-09-02T12:00:00');
+  const comidas = buildDaySchedule(plan, config, miercoles).filter((e) => e.kind === 'meal');
+  assert.ok(comidas.every((e) => !e.freeMeal));
+});
+
+test('validateConfig rechaza comidas del 20% en momentos inexistentes', () => {
+  const roto: UserConfig = { ...config, freeMeals: [{ weekday: 6, slotId: 'brunch' }] };
+  assert.ok(validateConfig(plan, roto).some((e) => e.includes('brunch')));
 });
