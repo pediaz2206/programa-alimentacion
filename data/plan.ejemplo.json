@@ -1,16 +1,16 @@
 {
   "id": "plan-recomposicion-v1",
-  "name": "Recomposicion corporal - plan base",
+  "name": "Recomposición corporal — plan base",
   "source": "PLACEHOLDER: reemplazar con la transcripcion de los PDF de la nutricionista",
   "guidelines": [
-    "El metodo del plato aplica a almuerzo y cena; desayuno y merienda se arman por porciones.",
-    "Si una comida queda corta de proteina, compensar en la siguiente colacion.",
-    "Agua como bebida habitual: 2 a 2.5 L por dia."
+    "El método del plato aplica a almuerzo y cena; desayuno y merienda se arman por porciones.",
+    "Si una comida queda corta de proteína, compensar en la siguiente colación.",
+    "Agua como bebida habitual: 2 a 2,5 L por día."
   ],
   "foodGroups": [
     {
       "id": "proteinas",
-      "name": "Proteinas",
+      "name": "Proteínas",
       "aliases": [
         "proteina",
         "carnes y huevos"
@@ -20,7 +20,7 @@
         "carne magra",
         "pescado",
         "huevo",
-        "atun",
+        "atún",
         "legumbres",
         "queso port salut",
         "yogur griego"
@@ -44,7 +44,7 @@
         "avena",
         "legumbres"
       ],
-      "notes": "Preferir version integral cuando exista."
+      "notes": "Preferir versión integral cuando exista."
     },
     {
       "id": "vegetales",
@@ -56,13 +56,13 @@
         "lechuga",
         "tomate",
         "zapallito",
-        "brocoli",
+        "brócoli",
         "zanahoria",
-        "morron",
+        "morrón",
         "cebolla",
         "espinaca"
       ],
-      "notes": "Mitad del plato en almuerzo y cena. Sin limite de cantidad."
+      "notes": "Mitad del plato en almuerzo y cena. Sin límite de cantidad."
     },
     {
       "id": "frutas",
@@ -85,11 +85,11 @@
         "frutos secos",
         "semillas"
       ],
-      "notes": "Porciones chicas: 1 cda de aceite, 1 punado de frutos secos."
+      "notes": "Porciones chicas: 1 cda de aceite, 1 puñado de frutos secos."
     },
     {
       "id": "lacteos",
-      "name": "Lacteos",
+      "name": "Lácteos",
       "examples": [
         "yogur natural",
         "leche",
@@ -119,7 +119,7 @@
     },
     {
       "id": "colacion-am",
-      "name": "Colacion de la manana",
+      "name": "Colación de la mañana",
       "defaultTime": "11:00",
       "prepLeadMinutes": 0,
       "isSnack": true
@@ -144,7 +144,7 @@
     },
     {
       "id": "colacion-pm",
-      "name": "Colacion de la tarde",
+      "name": "Colación de la tarde",
       "defaultTime": "19:00",
       "prepLeadMinutes": 0,
       "isSnack": true
@@ -193,7 +193,7 @@
           "groupId": "lacteos"
         },
         {
-          "item": "Fruta de estacion",
+          "item": "Fruta de estación",
           "qty": 1,
           "unit": "unidad",
           "groupId": "frutas"
@@ -283,7 +283,7 @@
     },
     {
       "id": "col-fruta-nueces",
-      "name": "Fruta con un punado de nueces",
+      "name": "Fruta con un puñado de nueces",
       "slotIds": [
         "colacion-am",
         "colacion-pm"
@@ -299,7 +299,7 @@
       },
       "ingredients": [
         {
-          "item": "Fruta de estacion",
+          "item": "Fruta de estación",
           "qty": 1,
           "unit": "unidad",
           "groupId": "frutas"
@@ -336,7 +336,7 @@
           "groupId": "lacteos"
         },
         {
-          "item": "Semillas de chia",
+          "item": "Semillas de chía",
           "qty": 10,
           "unit": "g",
           "groupId": "grasas"
@@ -426,7 +426,7 @@
     },
     {
       "id": "alm-pescado-papa",
-      "name": "Pescado al horno con papas y brocoli",
+      "name": "Pescado al horno con papas y brócoli",
       "slotIds": [
         "almuerzo",
         "cena"
@@ -451,13 +451,13 @@
           "groupId": "carbohidratos"
         },
         {
-          "item": "Brocoli",
+          "item": "Brócoli",
           "qty": 150,
           "unit": "g",
           "groupId": "vegetales"
         },
         {
-          "item": "Limon",
+          "item": "Limón",
           "qty": 1,
           "unit": "unidad"
         },
@@ -506,7 +506,7 @@
           "groupId": "vegetales"
         },
         {
-          "item": "Morron",
+          "item": "Morrón",
           "qty": 1,
           "unit": "unidad",
           "groupId": "vegetales"
@@ -552,7 +552,7 @@
           "groupId": "vegetales"
         },
         {
-          "item": "Morron",
+          "item": "Morrón",
           "qty": 1,
           "unit": "unidad",
           "groupId": "vegetales"
@@ -599,7 +599,7 @@
           "groupId": "lacteos"
         },
         {
-          "item": "Fruta de estacion",
+          "item": "Fruta de estación",
           "qty": 1,
           "unit": "unidad",
           "groupId": "frutas"
