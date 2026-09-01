@@ -11,7 +11,8 @@
     "hoy": "node scripts/check-node.mjs && node --experimental-strip-types packages/core/src/cli.ts",
     "typecheck": "tsc",
     "check": "npm run typecheck && npm test",
-    "vista": "node scripts/check-node.mjs && node --experimental-strip-types scripts/build-vista.ts"
+    "vista": "node scripts/check-node.mjs && node --experimental-strip-types scripts/build-vista.ts",
+    "test:db": "bash supabase/test/correr.sh"
   },
   "engines": {
     "node": ">=22.6"

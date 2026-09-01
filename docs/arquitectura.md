@@ -94,41 +94,45 @@ consultas, y el storage ya resuelve permisos, CDN y URLs firmadas que vencen.
 Esto convierte la decision de los dos roles en urgente, no diferible: el sentido
 de registrar la comida es que **alguien mas la mire**. Ver la seccion siguiente.
 
-## Pendiente de definir: los dos tipos de usuario
+## Los dos roles
 
-El producto tiene dos roles, no uno: **quien come** y **la nutricionista**. Todavia no esta
-disenado, pero conviene registrar por que no es un detalle que se agrega despues sin costo.
+Hay dos personas: **quien come** y **su nutricionista**. Ella ve el registro, y
+edita el plan segun la etapa del entrenamiento o indicaciones medicas.
 
-La decision que carga peso es **de quien es el plan**. Hoy `plans.owner_id` significa "es
-mio" y las policies de RLS dicen "solo ves lo tuyo". Eso alcanza para un usuario solo. Si
-la nutricionista escribe planes para varias personas, un plan pasa a tener dos partes
-distintas: quien lo redacta y quien lo sigue. Eso no es una columna extra, es otro modelo
-de permisos: hace falta una relacion profesional-paciente y policies que la consulten.
-Migrar de un modelo al otro con datos adentro implica reescribir todas las policies.
+Todo el acceso cuelga de una sola tabla, `care_relationships`, y de una sola
+funcion, `has_care_access()`. Que sea un unico punto es deliberado: un modelo de
+permisos disperso en veinte policies es un modelo que nadie puede auditar.
 
-Lo que hace falta saber antes de modelarlo, y que no conviene adivinar:
+Se conceden datos solo si se cumplen **las tres**: vinculo activo, no revocado,
+y consentimiento explicito del paciente. Que el vinculo este activo no alcanza:
+son datos de salud, y el consentimiento se registra con fecha y version.
 
-- La nutricionista, escribe el plan dentro de la app o sigue mandando PDF? Cambia si el
-  editor de planes es una feature del producto o solo un importador.
-- Un paciente puede tener planes de dos profesionales a la vez?
+Quien escribe que:
 
-Y desde que existe el registro con foto, estas dejan de ser hipoteticas:
+| | Paciente | Nutricionista |
+|---|---|---|
+| Plan y versiones | todo | lee y publica versiones nuevas |
+| Horarios, ayuno, exclusiones | todo | solo lee |
+| Registro de comidas y fotos | todo | solo lee |
+| Vinculo | acepta y revoca | invita y revoca |
 
-- La nutricionista ve las fotos de las comidas de sus pacientes? Es el motivo por el
-  que existe la feature, asi que la respuesta condiciona el bucket, las policies del
-  storage y el modelo de permisos entero.
-- Como se otorga y se revoca ese acceso? Un paciente que deja de atenderse con ella
-  tiene que poder cortarlo, y las fotos ya subidas no deberian quedar visibles.
-- Hace falta consentimiento explicito? Son datos de salud: conviene registrar cuando
-  se dio y poder mostrarlo.
+Tres decisiones que sostienen esto:
 
-Mientras no haya respuestas, el bucket es estrictamente privado: cada quien ve solo
-sus fotos. Abrirlo despues es una migracion de policies; abrirlo de mas ahora es una
-fuga de datos de salud.
+- **`patient_id` y `author_id` separados.** Quien sigue el plan y quien lo
+  escribio son distintos. Sin esa separacion, dejar que ella edite un plan la
+  volveria duena de los datos del paciente.
+- **Las versiones no se editan, se publican.** Una version publicada es el
+  registro de que se indico y cuando. `meal_logs` apunta a la version vigente
+  ese dia, asi que el historial no se reescribe cuando el plan cambia.
+- **Revocar no borra nada, corta el acceso.** Las fotos ya subidas dejan de ser
+  visibles sin migrar ni eliminar archivos, porque la policy del bucket consulta
+  la misma funcion.
 
-Mientras no haya respuestas, el esquema queda como esta: un solo rol, RLS simple. Es
-preferible una migracion consciente mas adelante a un modelo de permisos inventado ahora
-sobre supuestos que pueden salir mal.
+`supabase/test/permisos.sql` verifica esto contra un Postgres real: que el
+vinculo pendiente no alcance, que activo sin consentimiento no alcance, que
+revocar oculte tambien las fotos, y que un profesional ajeno nunca vea nada.
+
+    npm run test:db
 
 ## Estado
 

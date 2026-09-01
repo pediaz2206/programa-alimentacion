@@ -1,72 +1,157 @@
--- Esquema base. Aplicar con: supabase db push, o pegar en el SQL editor.
--- Todo cuelga de auth.users (Google SSO) y esta protegido por RLS.
+-- Esquema de En Punto. Aplicar con `supabase db push` o desde el SQL editor.
+--
+-- Hay dos roles: quien come y su nutricionista. Toda la seguridad cuelga de
+-- `care_relationships`: la nutricionista no ve nada de nadie salvo que exista
+-- un vinculo activo Y el paciente haya dado consentimiento. Son datos de
+-- salud, asi que el modelo es "cerrado por defecto, se abre explicitamente".
 
 create extension if not exists "pgcrypto";
 
--- Preferencias de la persona. La zona horaria es critica: el cron calcula la
--- agenda en el dia local de cada usuario, no en UTC.
+-- ---------------------------------------------------------------- perfiles --
+
 create table if not exists public.profiles (
-  id          uuid primary key references auth.users (id) on delete cascade,
-  display_name text,
-  timezone    text not null default 'America/Argentina/Buenos_Aires',
-  created_at  timestamptz not null default now()
+  id              uuid primary key references auth.users (id) on delete cascade,
+  display_name    text,
+  -- La zona horaria es critica: el cron calcula la agenda en el dia local de
+  -- cada persona, no en UTC.
+  timezone        text not null default 'America/Argentina/Buenos_Aires',
+  -- Cualquiera es paciente de si mismo. Ser profesional es un permiso extra,
+  -- no un rol excluyente: una nutricionista tambien puede seguir un plan.
+  is_professional boolean not null default false,
+  created_at      timestamptz not null default now()
 );
 
--- El plan transcrito del PDF. Ver docs/arquitectura.md sobre por que es JSONB.
--- `doc` valida contra el tipo NutritionPlan de packages/core.
+-- ------------------------------------------------------------- el vinculo --
+
+-- El unico lugar donde se decide quien puede ver los datos de quien.
+create table if not exists public.care_relationships (
+  id                 uuid primary key default gen_random_uuid(),
+  professional_id    uuid not null references auth.users (id) on delete cascade,
+  patient_id         uuid not null references auth.users (id) on delete cascade,
+  -- 'pending': invitada pero sin aceptar. 'active': vigente. 'revoked': cortada.
+  status             text not null default 'pending'
+                     check (status in ('pending', 'active', 'revoked')),
+  invited_at         timestamptz not null default now(),
+  accepted_at        timestamptz,
+  -- Cortar el vinculo es un derecho del paciente y tiene efecto inmediato:
+  -- las policias dejan de conceder acceso, incluidas las fotos ya subidas.
+  revoked_at         timestamptz,
+  -- Consentimiento explicito para compartir registros de salud. Sin esto no
+  -- hay acceso, aunque el vinculo figure activo.
+  consent_granted_at timestamptz,
+  consent_version    text,
+  unique (professional_id, patient_id),
+  constraint vinculo_no_es_uno_mismo check (professional_id <> patient_id)
+);
+
+create index if not exists care_rel_pro_idx on public.care_relationships (professional_id)
+  where status = 'active';
+create index if not exists care_rel_pat_idx on public.care_relationships (patient_id);
+
+/**
+ * Unica fuente de verdad del acceso profesional.
+ *
+ * Es SECURITY DEFINER a proposito: las policies de otras tablas la consultan,
+ * y sin eso la lectura de care_relationships volveria a pasar por RLS y se
+ * generaria una recursion.
+ */
+create or replace function public.has_care_access(patient uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.care_relationships r
+    where r.patient_id = patient
+      and r.professional_id = auth.uid()
+      and r.status = 'active'
+      and r.revoked_at is null
+      and r.consent_granted_at is not null
+  );
+$$;
+
+revoke all on function public.has_care_access(uuid) from public;
+grant execute on function public.has_care_access(uuid) to authenticated;
+
+-- ----------------------------------------------------------------- planes --
+
+-- `patient_id` es de quien sigue el plan; `author_id`, de quien lo escribio.
+-- Separarlos es lo que permite que la nutricionista edite un plan ajeno sin
+-- volverse duena de los datos del paciente.
 create table if not exists public.plans (
   id         uuid primary key default gen_random_uuid(),
-  owner_id   uuid not null references auth.users (id) on delete cascade,
+  patient_id uuid not null references auth.users (id) on delete cascade,
+  author_id  uuid references auth.users (id) on delete set null,
   name       text not null,
   source     text,
-  doc        jsonb not null,
   is_active  boolean not null default true,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  created_at timestamptz not null default now()
 );
-create index if not exists plans_owner_idx on public.plans (owner_id) where is_active;
+create index if not exists plans_patient_idx on public.plans (patient_id) where is_active;
 
--- Horarios, ayuno y exclusiones. Valida contra el tipo UserConfig.
+-- El plan cambia con el tiempo: etapa del entrenamiento, indicaciones medicas.
+-- Guardar versiones no es prolijidad: sin esto no se puede saber que plan
+-- estaba vigente cuando se registro una comida de hace tres meses.
+create table if not exists public.plan_versions (
+  id             uuid primary key default gen_random_uuid(),
+  plan_id        uuid not null references public.plans (id) on delete cascade,
+  version        integer not null,
+  -- Valida contra el tipo NutritionPlan de packages/core.
+  doc            jsonb not null,
+  -- Por que cambio: "subida de volumen", "indicacion del medico".
+  change_note    text,
+  author_id      uuid references auth.users (id) on delete set null,
+  effective_from date not null default current_date,
+  created_at     timestamptz not null default now(),
+  unique (plan_id, version)
+);
+create index if not exists plan_versions_plan_idx
+  on public.plan_versions (plan_id, effective_from desc);
+
+-- Horarios, ayuno y exclusiones. Son del paciente: la nutricionista los ve
+-- para dar contexto, pero no decide a que hora almorzas.
 create table if not exists public.configs (
   id         uuid primary key default gen_random_uuid(),
-  owner_id   uuid not null references auth.users (id) on delete cascade,
+  patient_id uuid not null references auth.users (id) on delete cascade,
   plan_id    uuid not null references public.plans (id) on delete cascade,
   doc        jsonb not null,
   updated_at timestamptz not null default now(),
-  unique (owner_id, plan_id)
+  unique (patient_id, plan_id)
 );
 
--- Que se comio realmente. Es lo unico verdaderamente relacional: se consulta,
--- se agrega y se grafica.
---
--- La foto es el reemplazo de mandar imagenes por WhatsApp: se guarda en
--- Supabase Storage (bucket privado "meal-photos") y aca queda solo la ruta.
--- Las fotos no van en la base: son binarios grandes y el storage ya resuelve
--- permisos, CDN y URLs firmadas.
+-- ---------------------------------------------------------------- registro --
+
+-- Que se comio realmente. La foto reemplaza el ida y vuelta por WhatsApp: se
+-- guarda en Storage (bucket privado "meal-photos") y aca queda solo la ruta.
+-- Los binarios no van en la base: encarecen backups y consultas, y el storage
+-- ya resuelve permisos, CDN y URLs firmadas que vencen.
 create table if not exists public.meal_logs (
-  id           uuid primary key default gen_random_uuid(),
-  owner_id     uuid not null references auth.users (id) on delete cascade,
-  local_date   date not null,
-  slot_id      text not null,
-  option_id    text,
-  -- Snapshot de lo consumido al momento de registrar: si el plan cambia
-  -- despues, el historial no se reescribe solo.
-  portions     jsonb,
-  protein_grams numeric,
-  -- Comida del 20%: no sigue el plan, y cuenta contra el presupuesto semanal.
-  is_free_meal boolean not null default false,
-  note         text,
-  -- Ruta dentro del bucket, no una URL: las URLs se firman al leer y vencen.
-  photo_path   text,
-  logged_at    timestamptz not null default now(),
-  unique (owner_id, local_date, slot_id)
+  id               uuid primary key default gen_random_uuid(),
+  patient_id       uuid not null references auth.users (id) on delete cascade,
+  -- Que version del plan regia ese dia. Permite leer el historial sin que lo
+  -- reescriban los cambios posteriores.
+  plan_version_id  uuid references public.plan_versions (id) on delete set null,
+  local_date       date not null,
+  slot_id          text not null,
+  option_id        text,
+  portions         jsonb,
+  protein_grams    numeric,
+  is_free_meal     boolean not null default false,
+  note             text,
+  photo_path       text,
+  logged_at        timestamptz not null default now(),
+  unique (patient_id, local_date, slot_id)
 );
-create index if not exists meal_logs_owner_date_idx on public.meal_logs (owner_id, local_date desc);
--- Para contar cuantas comidas del 20% se usaron en la semana.
+create index if not exists meal_logs_patient_date_idx
+  on public.meal_logs (patient_id, local_date desc);
 create index if not exists meal_logs_free_idx
-  on public.meal_logs (owner_id, local_date desc) where is_free_meal;
+  on public.meal_logs (patient_id, local_date desc) where is_free_meal;
 
--- Suscripciones Web Push. Un usuario puede tener varias (celular, notebook).
+-- ---------------------------------------------------------- notificaciones --
+
 create table if not exists public.push_subscriptions (
   id         uuid primary key default gen_random_uuid(),
   owner_id   uuid not null references auth.users (id) on delete cascade,
@@ -76,64 +161,153 @@ create table if not exists public.push_subscriptions (
   user_agent text,
   created_at timestamptz not null default now(),
   last_ok_at timestamptz,
-  -- El endpoint puede morir (permiso revocado, app desinstalada). El cron lo
-  -- desactiva ante un 404/410 en vez de reintentar para siempre.
+  -- El endpoint puede morir. El cron lo desactiva ante un 404/410 en vez de
+  -- reintentar para siempre.
   is_active  boolean not null default true
 );
-create index if not exists push_subs_owner_idx on public.push_subscriptions (owner_id) where is_active;
+create index if not exists push_subs_owner_idx on public.push_subscriptions (owner_id)
+  where is_active;
 
--- Idempotencia del cron: garantiza que un evento se envie una sola vez aunque
--- dos corridas se solapen o una se reintente.
+-- Idempotencia del cron: un evento se envia una sola vez aunque dos corridas
+-- se solapen o una se reintente.
 create table if not exists public.notification_log (
-  owner_id   uuid not null references auth.users (id) on delete cascade,
+  owner_id  uuid not null references auth.users (id) on delete cascade,
   local_date date not null,
-  event_key  text not null,
-  sent_at    timestamptz not null default now(),
+  event_key text not null,
+  sent_at   timestamptz not null default now(),
   primary key (owner_id, local_date, event_key)
 );
 
-alter table public.profiles           enable row level security;
-alter table public.plans              enable row level security;
-alter table public.configs            enable row level security;
-alter table public.meal_logs          enable row level security;
-alter table public.push_subscriptions enable row level security;
-alter table public.notification_log   enable row level security;
+-- --------------------------------------------------------------------- RLS --
 
--- Cada quien ve y escribe solo lo suyo. El cron usa la service role key, que
--- pasa por encima de RLS.
-do $$
-declare
-  t text;
-  col text;
-begin
-  foreach t in array array['profiles','plans','configs','meal_logs','push_subscriptions','notification_log']
-  loop
-    col := case when t = 'profiles' then 'id' else 'owner_id' end;
-    execute format('drop policy if exists %1$I on public.%1$I', t);
-    execute format(
-      'create policy %1$I on public.%1$I for all using (%2$I = auth.uid()) with check (%2$I = auth.uid())',
-      t, col);
-  end loop;
-end $$;
+alter table public.profiles            enable row level security;
+alter table public.care_relationships  enable row level security;
+alter table public.plans               enable row level security;
+alter table public.plan_versions       enable row level security;
+alter table public.configs             enable row level security;
+alter table public.meal_logs           enable row level security;
+alter table public.push_subscriptions  enable row level security;
+alter table public.notification_log    enable row level security;
 
--- Bucket privado para las fotos de las comidas. Sin acceso publico: se leen
--- con URLs firmadas de corta duracion.
+drop policy if exists profiles_own on public.profiles;
+create policy profiles_own on public.profiles
+  for all using (id = auth.uid()) with check (id = auth.uid());
+
+-- La profesional necesita ver el nombre de sus pacientes, nada mas.
+drop policy if exists profiles_professional_read on public.profiles;
+create policy profiles_professional_read on public.profiles
+  for select using (public.has_care_access(id));
+
+-- Ambas partes ven el vinculo. Cada una lo corta cuando quiere.
+drop policy if exists care_rel_visible on public.care_relationships;
+create policy care_rel_visible on public.care_relationships
+  for select using (patient_id = auth.uid() or professional_id = auth.uid());
+
+drop policy if exists care_rel_invite on public.care_relationships;
+create policy care_rel_invite on public.care_relationships
+  for insert with check (professional_id = auth.uid() or patient_id = auth.uid());
+
+drop policy if exists care_rel_update on public.care_relationships;
+create policy care_rel_update on public.care_relationships
+  for update using (patient_id = auth.uid() or professional_id = auth.uid())
+  with check (patient_id = auth.uid() or professional_id = auth.uid());
+
+-- Planes: el paciente manda; la profesional con acceso lee y escribe, pero
+-- no borra.
+drop policy if exists plans_patient on public.plans;
+create policy plans_patient on public.plans
+  for all using (patient_id = auth.uid()) with check (patient_id = auth.uid());
+
+drop policy if exists plans_professional_read on public.plans;
+create policy plans_professional_read on public.plans
+  for select using (public.has_care_access(patient_id));
+
+drop policy if exists plans_professional_write on public.plans;
+create policy plans_professional_write on public.plans
+  for insert with check (public.has_care_access(patient_id) and author_id = auth.uid());
+
+drop policy if exists plans_professional_edit on public.plans;
+create policy plans_professional_edit on public.plans
+  for update using (public.has_care_access(patient_id))
+  with check (public.has_care_access(patient_id));
+
+drop policy if exists plan_versions_patient on public.plan_versions;
+create policy plan_versions_patient on public.plan_versions
+  for all
+  using (exists (select 1 from public.plans p where p.id = plan_id and p.patient_id = auth.uid()))
+  with check (exists (select 1 from public.plans p where p.id = plan_id and p.patient_id = auth.uid()));
+
+drop policy if exists plan_versions_professional_read on public.plan_versions;
+create policy plan_versions_professional_read on public.plan_versions
+  for select
+  using (exists (select 1 from public.plans p where p.id = plan_id and public.has_care_access(p.patient_id)));
+
+-- Una version publicada no se edita: se publica otra. El historial es el
+-- registro de que se indico y cuando.
+drop policy if exists plan_versions_professional_write on public.plan_versions;
+create policy plan_versions_professional_write on public.plan_versions
+  for insert
+  with check (
+    exists (select 1 from public.plans p where p.id = plan_id and public.has_care_access(p.patient_id))
+    and author_id = auth.uid()
+  );
+
+-- Los horarios son del paciente. La profesional los ve, no los edita.
+drop policy if exists configs_patient on public.configs;
+create policy configs_patient on public.configs
+  for all using (patient_id = auth.uid()) with check (patient_id = auth.uid());
+
+drop policy if exists configs_professional_read on public.configs;
+create policy configs_professional_read on public.configs
+  for select using (public.has_care_access(patient_id));
+
+-- El registro es del paciente. La profesional lo lee: es el punto de la
+-- funcionalidad. No lo escribe ni lo corrige.
+drop policy if exists meal_logs_patient on public.meal_logs;
+create policy meal_logs_patient on public.meal_logs
+  for all using (patient_id = auth.uid()) with check (patient_id = auth.uid());
+
+drop policy if exists meal_logs_professional_read on public.meal_logs;
+create policy meal_logs_professional_read on public.meal_logs
+  for select using (public.has_care_access(patient_id));
+
+drop policy if exists push_subs_own on public.push_subscriptions;
+create policy push_subs_own on public.push_subscriptions
+  for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+drop policy if exists notif_log_own on public.notification_log;
+create policy notif_log_own on public.notification_log
+  for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+-- ----------------------------------------------------------------- fotos --
+
+-- Bucket privado: las fotos se leen con URLs firmadas de corta duracion.
 insert into storage.buckets (id, name, public)
 values ('meal-photos', 'meal-photos', false)
 on conflict (id) do nothing;
 
--- Cada quien escribe y lee solo dentro de su propia carpeta (<uid>/...).
--- Que la nutricionista pueda ver estas fotos exige el modelo de dos roles que
--- todavia no esta definido; ver docs/arquitectura.md.
-do $$
-begin
-  execute $p$
-    drop policy if exists meal_photos_own on storage.objects;
-    $p$;
-exception when others then null;
-end $$;
-
+-- Las fotos viven en <uid-del-paciente>/<archivo>. El primer segmento de la
+-- ruta es lo que decide el acceso.
+drop policy if exists meal_photos_own on storage.objects;
 create policy meal_photos_own on storage.objects
   for all
-  using (bucket_id = 'meal-photos' and (storage.foldername(name))[1] = auth.uid()::text)
-  with check (bucket_id = 'meal-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+  using (
+    bucket_id = 'meal-photos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  )
+  with check (
+    bucket_id = 'meal-photos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- La profesional solo lee, y solo mientras el vinculo este activo y consentido.
+-- Al revocar, esta policy deja de conceder: las fotos ya subidas se vuelven
+-- inaccesibles sin necesidad de borrarlas ni migrarlas.
+drop policy if exists meal_photos_professional_read on storage.objects;
+create policy meal_photos_professional_read on storage.objects
+  for select
+  using (
+    bucket_id = 'meal-photos'
+    and (storage.foldername(name))[1] ~ '^[0-9a-fA-F-]{36}$'
+    and public.has_care_access(((storage.foldername(name))[1])::uuid)
+  );
