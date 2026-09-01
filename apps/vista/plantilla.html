@@ -187,6 +187,30 @@ h1{font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; marg
 .plato-datos span{display:flex; align-items:center; gap:7px; color:var(--tenue)}
 .plato-datos b{color:var(--tinta); font-weight:600; font-family:"IBM Plex Mono",monospace}
 
+.nota-seccion{font-size:12.5px; color:var(--tenue); margin:0; line-height:1.45}
+.composicion{display:flex; flex-direction:column; gap:11px}
+.comp-fila{display:flex; flex-direction:column; gap:3px}
+.comp-fila .comp-slot{font-size:12px; letter-spacing:.07em; text-transform:uppercase; color:var(--tenue); font-weight:600}
+.comp-fila .comp-formula{font-size:14px; line-height:1.45}
+.comp-fila .comp-formula b{font-weight:600}
+.equivalencias{display:flex; flex-direction:column; gap:14px}
+.eq-grupo{display:flex; flex-direction:column; gap:6px}
+.eq-tope{display:flex; align-items:center; gap:8px}
+.eq-tope .eq-nombre{font-size:13.5px; font-weight:600}
+.eq-nota{font-size:12px; color:var(--tenue); line-height:1.4}
+.eq-lista{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:3px}
+.eq-lista li{display:flex; align-items:baseline; justify-content:space-between; gap:12px; font-size:13px; padding:3px 0; border-bottom:1px solid var(--linea)}
+.eq-lista li:last-child{border-bottom:0}
+.eq-lista .eq-cant{color:var(--tenue); white-space:nowrap}
+.eq-lista .eq-prot{color:var(--g-proteinas); font-weight:600; white-space:nowrap}
+.reglas{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px}
+.reglas li{font-size:13px; line-height:1.45; padding-left:15px; position:relative; color:var(--tenue)}
+.reglas li::before{content:""; position:absolute; left:0; top:7px; width:5px; height:5px; border-radius:50%; background:var(--verde)}
+.proteina{display:flex; flex-direction:column; gap:5px; padding-bottom:12px; border-bottom:1px solid var(--linea); margin-bottom:2px}
+.proteina .prot-tope{display:flex; align-items:baseline; justify-content:space-between; gap:10px}
+.proteina .prot-nombre{font-size:14px; font-weight:600}
+.proteina .prot-cifra{font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--tenue); font-variant-numeric:tabular-nums}
+.proteina .barra{height:9px}
 .pie{font-size:11.5px; color:var(--tenue); text-align:center; line-height:1.5}
 @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
 </style>
@@ -238,21 +262,20 @@ h1{font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; marg
     <p class="consejo" id="consejo"></p>
   </section>
 
-  <section class="balance">
-    <h3 style="margin:0">Método del plato · almuerzo y cena</h3>
-    <div class="plato-caja">
-      <svg width="104" height="104" viewBox="0 0 104 104" role="img" aria-label="Plato dividido en mitad vegetales, un cuarto proteínas, un cuarto carbohidratos">
-        <circle cx="52" cy="52" r="47" fill="none" stroke="var(--linea)" stroke-width="1.5"/>
-        <path d="M52 8 A44 44 0 0 1 52 96 Z" fill="var(--g-vegetales)" opacity=".85"/>
-        <path d="M52 52 L52 8 A44 44 0 0 0 8 52 Z" fill="var(--g-proteinas)" opacity=".85"/>
-        <path d="M52 52 L8 52 A44 44 0 0 0 52 96 Z" fill="var(--g-carbohidratos)" opacity=".85"/>
-      </svg>
-      <div class="plato-datos">
-        <span><i class="punto" style="background:var(--g-vegetales)"></i><b>1/2</b> Vegetales</span>
-        <span><i class="punto" style="background:var(--g-proteinas)"></i><b>1/4</b> Proteínas</span>
-        <span><i class="punto" style="background:var(--g-carbohidratos)"></i><b>1/4</b> Carbohidratos</span>
-      </div>
-    </div>
+  <section class="balance" id="sec-composicion" hidden>
+    <h3 style="margin:0">Cómo se arma cada comida</h3>
+    <div class="composicion" id="composicion"></div>
+  </section>
+
+  <section class="balance" id="sec-equivalencias" hidden>
+    <h3 style="margin:0">Equivalencias</h3>
+    <p class="nota-seccion">Dentro de cada grupo, las opciones son intercambiables entre sí.</p>
+    <div class="equivalencias" id="equivalencias"></div>
+  </section>
+
+  <section class="balance" id="sec-reglas" hidden>
+    <h3 style="margin:0">Reglas del plan</h3>
+    <ul class="reglas" id="reglas"></ul>
   </section>
 
   <p class="pie">
@@ -309,6 +332,14 @@ h1{font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; marg
       for(var j=0;j<s.length;j++) if(s[j].id === id) return s[j];
     }
     return null;
+  }
+  function proteinaComida(){
+    var total = 0;
+    Object.keys(estado.comidas).forEach(function(slot){
+      var op = opcionPorId(estado.comidas[slot]);
+      if(op && op.proteinGrams) total += op.proteinGrams;
+    });
+    return total;
   }
   function balance(){
     var comido = {};
@@ -470,7 +501,20 @@ h1{font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; marg
   /* ---------- balance ---------- */
   function pintarBalance(){
     var b = balance();
-    document.getElementById('grupos').innerHTML = b.map(function(g){
+    var objetivo = D.plan.proteinTargetGrams;
+    var prot = objetivo ? proteinaComida() : 0;
+    var faltaProt = objetivo ? Math.max(0, objetivo - prot) : 0;
+
+    var htmlProt = '';
+    if(objetivo){
+      htmlProt = '<div class="proteina">'
+        + '<div class="prot-tope"><span class="prot-nombre">Proteína del día</span>'
+        + '<span class="prot-cifra">' + Math.round(prot) + ' / ' + objetivo + ' g</span></div>'
+        + '<span class="barra"><i style="width:' + Math.min(100, (prot/objetivo)*100).toFixed(1)
+        + '%;background:var(--g-proteinas)"></i></span></div>';
+    }
+
+    document.getElementById('grupos').innerHTML = htmlProt + b.map(function(g){
       var pct = Math.min(100, (g.hecho / g.objetivo) * 100);
       var completo = g.falta === 0;
       return '<div class="grupo' + (completo ? ' completo' : '') + '">'
@@ -481,11 +525,18 @@ h1{font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; marg
     }).join('');
 
     var faltantes = b.filter(function(g){ return g.falta > 0; });
-    var listos = b.length - faltantes.length;
-    document.getElementById('chip-balance').textContent = listos + ' de ' + b.length + ' cubiertos';
+    var chip = document.getElementById('chip-balance');
+    if(objetivo){
+      chip.textContent = faltaProt > 0 ? 'Faltan ' + Math.round(faltaProt) + ' g' : 'Proteína cubierta';
+    } else {
+      chip.textContent = (b.length - faltantes.length) + ' de ' + b.length + ' cubiertos';
+    }
     var el = document.getElementById('consejo');
-    if(!faltantes.length){
-      el.innerHTML = 'Día completo: todos los grupos cubiertos.';
+    if(objetivo && faltaProt > 0){
+      el.innerHTML = 'Te faltan <b>' + Math.round(faltaProt) + ' g de proteína</b> para llegar a los '
+        + objetivo + ' g del día.';
+    } else if(!faltantes.length){
+      el.innerHTML = 'Día completo: todos los objetivos cubiertos.';
     } else {
       faltantes.sort(function(a,b2){ return b2.falta - a.falta; });
       el.innerHTML = 'Te queda la cena para cubrir '
@@ -530,6 +581,68 @@ h1{font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; marg
     }
   });
 
+  /* ---------- referencia del plan ---------- */
+  function nombreGrupo(id){ return (GRUPOS[id] || {}).name || id; }
+
+  function pintarComposicion(){
+    var activos = {};
+    D.events.forEach(function(e){ if(e.kind === 'meal' && e.slotId) activos[e.slotId] = true; });
+    var slots = (D.plan.slots || []).filter(function(s){ return activos[s.id]; });
+
+    var filas = slots.map(function(slot){
+      var texto = '';
+      if(slot.formula && slot.formula.length){
+        texto = slot.formula.map(function(c){
+          var grupo = nombreGrupo(c.groupId).toLowerCase();
+          var yaLoNombra = c.cantidad.toLowerCase().indexOf(grupo.replace(/s$/, '')) >= 0;
+          return '<b>' + c.cantidad + '</b>' + (yaLoNombra ? '' : ' de ' + grupo);
+        }).join(' + ');
+      } else if(slot.plateTarget || (slot.usesPlateMethod && D.plan.plateDefault)){
+        var plato = slot.plateTarget || D.plan.plateDefault;
+        texto = Object.keys(plato).sort(function(a,b){ return plato[b]-plato[a]; }).map(function(g){
+          return '<b>' + Math.round(plato[g]*100) + '%</b> ' + nombreGrupo(g).toLowerCase();
+        }).join(' · ');
+      }
+      if(!texto) return '';
+      return '<div class="comp-fila"><span class="comp-slot">' + slot.name + '</span>'
+        + '<span class="comp-formula">' + texto + '</span></div>';
+    }).filter(Boolean);
+
+    if(!filas.length) return;
+    document.getElementById('composicion').innerHTML = filas.join('');
+    document.getElementById('sec-composicion').hidden = false;
+  }
+
+  function pintarEquivalencias(){
+    var grupos = (D.plan.foodGroups || []).filter(function(g){ return (g.exchanges || []).length; });
+    if(!grupos.length) return;
+    document.getElementById('equivalencias').innerHTML = grupos.map(function(g){
+      var items = g.exchanges.map(function(ex){
+        var cant = ex.qty != null ? (ex.qty + (ex.unit ? ' ' + ex.unit : '')) : (ex.unit || '');
+        var derecha = ex.proteinGrams != null
+          ? '<span class="eq-prot">' + ex.proteinGrams + ' g prot.</span>'
+          : '<span class="eq-cant">' + cant + '</span>';
+        var etiqueta = ex.label + (ex.proteinGrams != null && cant ? ' · ' + cant : '');
+        return '<li><span>' + etiqueta + '</span>' + derecha + '</li>';
+      }).join('');
+      return '<div class="eq-grupo">'
+        + '<div class="eq-tope"><i class="punto" style="background:' + colorGrupo(g.id) + '"></i>'
+        + '<span class="eq-nombre">' + g.name + '</span></div>'
+        + (g.notes ? '<p class="eq-nota">' + g.notes + '</p>' : '')
+        + '<ul class="eq-lista">' + items + '</ul></div>';
+    }).join('');
+    document.getElementById('sec-equivalencias').hidden = false;
+  }
+
+  function pintarReglas(){
+    var reglas = D.plan.guidelines || [];
+    if(!reglas.length) return;
+    document.getElementById('reglas').innerHTML = reglas.map(function(r){
+      return '<li>' + r + '</li>';
+    }).join('');
+    document.getElementById('sec-reglas').hidden = false;
+  }
+
   /* ---------- arranque ---------- */
   document.getElementById('fecha').textContent = D.fecha;
   document.getElementById('nombre-plan').textContent = D.plan.name;
@@ -539,6 +652,9 @@ h1{font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.1; marg
       + 'Hora simulada: <b class="mono">' + hhmm(AHORA) + '</b>.';
     aviso.hidden = false;
   }
+  pintarComposicion();
+  pintarEquivalencias();
+  pintarReglas();
   dibujarDial();
   pintarAhora();
   pintarRiel();

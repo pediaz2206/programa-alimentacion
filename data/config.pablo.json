@@ -1,0 +1,37 @@
+{
+  "planId": "plan-pablo-2026-09",
+  "defaultPrepLeadMinutes": 30,
+  "optionsPerSuggestion": 3,
+  "excludeTags": [],
+  "fasting": {
+    "enabled": true,
+    "protocol": "16:8",
+    "eatingWindowStart": "12:00",
+    "eatingWindowHours": 8,
+    "closingWarningMinutes": 60
+  },
+  "slots": [
+    {
+      "slotId": "desayuno",
+      "enabled": false
+    },
+    {
+      "slotId": "almuerzo",
+      "time": "13:00",
+      "prepLeadMinutes": 45
+    },
+    {
+      "slotId": "merienda",
+      "time": "17:00"
+    },
+    {
+      "slotId": "colacion",
+      "enabled": false
+    },
+    {
+      "slotId": "cena",
+      "time": "20:00",
+      "prepLeadMinutes": 45
+    }
+  ]
+}

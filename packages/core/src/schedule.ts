@@ -71,10 +71,13 @@ export function buildDaySchedule(
       dayIndex,
       remaining: remainingPortions(balance),
       avoidIds: projected.map((p) => p.option.id),
+      remainingProtein: balance.protein?.remaining,
     });
 
     const time = formatTime(minutes);
-    const outsideWindow = fasting && !isWithinWindow(minutes, windowStart, windowMinutes);
+    const cierre = (windowStart + windowMinutes) % 1440;
+    const outsideWindow =
+      fasting && !isWithinWindow(minutes, windowStart, windowMinutes) && minutes !== cierre;
     const warnings = outsideWindow
       ? [
           `${slot.name} (${time}) cae fuera de la ventana de alimentacion ` +
@@ -153,13 +156,30 @@ export function buildDaySchedule(
 function mealBody(plan: NutritionPlan, slot: MealSlot, suggestions: MealOption[]): string {
   const plate = plateFor(plan, slot);
   const lines: string[] = [];
-  if (plate) lines.push(`Plato: ${describePlate(plate, plan.foodGroups)}`);
+  const formula = describeFormula(plan, slot);
+  if (formula) lines.push(`Armá: ${formula}`);
+  else if (plate) lines.push(`Plato: ${describePlate(plate, plan.foodGroups)}`);
   if (suggestions.length > 0) {
     lines.push(`Opciones: ${suggestions.map((s) => s.name).join(' / ')}`);
   } else {
     lines.push('Sin opciones cargadas para este momento.');
   }
   return lines.join('. ');
+}
+
+/** "1 opción de Hidratos + 1 porción de Proteínas + 1/3 del plato de Vegetales" */
+export function describeFormula(plan: NutritionPlan, slot: MealSlot): string | undefined {
+  if (!slot.formula || slot.formula.length === 0) return undefined;
+  const names = new Map(plan.foodGroups.map((g) => [g.id, g.name]));
+  return slot.formula
+    .map((c) => {
+      const grupo = (names.get(c.groupId) ?? c.groupId).toLowerCase();
+      // "1 fruta" ya nombra al grupo; "1 fruta de frutas" sobra.
+      return c.cantidad.toLowerCase().includes(grupo.replace(/s$/, ''))
+        ? c.cantidad
+        : `${c.cantidad} de ${grupo}`;
+    })
+    .join(' + ');
 }
 
 function pendingBody(plan: NutritionPlan, projected: MealOption[]): string {

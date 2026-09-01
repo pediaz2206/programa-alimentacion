@@ -39,6 +39,8 @@ const datos = {
     foodGroups: plan.foodGroups,
     dailyTargets: plan.dailyTargets ?? {},
     guidelines: plan.guidelines ?? [],
+    proteinTargetGrams: plan.proteinTargetGrams,
+    slots: plan.slots,
   },
   fasting: config.fasting,
   events: buildDaySchedule(plan, config, date),

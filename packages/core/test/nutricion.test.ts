@@ -28,7 +28,7 @@ test('el balance avisa cuando un grupo se pasa del objetivo', () => {
 
 test('dia completo cuando todos los grupos estan cubiertos', () => {
   const balance = computeDailyBalance(plan, [byId('pollo'), byId('pescado')]);
-  assert.deepEqual(balance.advice, ['Dia completo: todos los grupos cubiertos.']);
+  assert.deepEqual(balance.advice, ['Dia completo: todos los objetivos cubiertos.']);
 });
 
 test('remainingPortions alimenta al selector', () => {

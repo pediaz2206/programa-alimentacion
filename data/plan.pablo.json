@@ -1,0 +1,1765 @@
+{
+  "id": "plan-pablo-2026-09",
+  "name": "Plan de alimentación — Pablo",
+  "source": "PDF de la nutricionista: PABLO DIAZ.pdf + Ideas Desayuno y colaciones.pdf (capturas en data/plan-alimentacion y data/opciones-desayunos-meriendas)",
+  "proteinTargetGrams": 120,
+  "guidelines": [
+    "Requerimiento proteico: 120 g de proteína por día. Si un día queda un poco por debajo no pasa nada: el resto de los alimentos también aporta.",
+    "Frutos secos, mantequilla de maní o palta: solo una vez al día. Elegir una opción y decidir en qué comida usarla.",
+    "Si en el almuerzo predominó el carbohidrato, en la cena evitar agregarlo.",
+    "Intentar consumir 2 o 3 frutas por día.",
+    "El aceite de oliva siempre en crudo, para condimentar.",
+    "Evitar aderezos, caldos y polvos saborizantes, y alimentos con alto contenido de sodio.",
+    "Controlar las porciones aunque sea la comida del 20%.",
+    "Evitar hacer todas las comidas del 20% el mismo día."
+  ],
+  "foodGroups": [
+    {
+      "id": "hidratos",
+      "name": "Hidratos",
+      "aliases": [
+        "HIDRATOS",
+        "carbohidratos"
+      ],
+      "examples": [
+        "arroz",
+        "avena",
+        "lentejas",
+        "garbanzos",
+        "quinoa",
+        "papa",
+        "batata",
+        "pan integral",
+        "fideos integrales"
+      ],
+      "notes": "La cantidad depende de la comida: en almuerzo y cena se mide en crudo.",
+      "exchanges": [
+        {
+          "label": "Arroz o avena",
+          "qty": 70,
+          "unit": "g en crudo",
+          "note": "aprox. 5 cucharadas colmadas",
+          "slotIds": [
+            "almuerzo",
+            "cena"
+          ]
+        },
+        {
+          "label": "Lentejas, arvejas, porotos o garbanzos",
+          "qty": 70,
+          "unit": "g en crudo",
+          "slotIds": [
+            "almuerzo",
+            "cena"
+          ]
+        },
+        {
+          "label": "Quinoa o trigo sarraceno",
+          "qty": 70,
+          "unit": "g en crudo",
+          "slotIds": [
+            "almuerzo",
+            "cena"
+          ]
+        },
+        {
+          "label": "Papa chica",
+          "qty": 120,
+          "unit": "g en crudo",
+          "slotIds": [
+            "almuerzo",
+            "cena"
+          ]
+        },
+        {
+          "label": "Batata o boniato",
+          "qty": 120,
+          "unit": "g en crudo",
+          "slotIds": [
+            "almuerzo",
+            "cena"
+          ]
+        },
+        {
+          "label": "Choclo",
+          "qty": 0.5,
+          "unit": "unidad",
+          "slotIds": [
+            "almuerzo",
+            "cena"
+          ]
+        },
+        {
+          "label": "Fideos integrales cocidos",
+          "qty": 100,
+          "unit": "g",
+          "slotIds": [
+            "almuerzo",
+            "cena"
+          ]
+        },
+        {
+          "label": "Pan integral",
+          "qty": 2,
+          "unit": "rebanadas (70 g)",
+          "slotIds": [
+            "merienda",
+            "desayuno"
+          ]
+        },
+        {
+          "label": "Cereales integrales, granola o avena",
+          "qty": 40,
+          "unit": "g",
+          "note": "4 cucharadas",
+          "slotIds": [
+            "merienda",
+            "desayuno"
+          ]
+        },
+        {
+          "label": "Tostadas de arroz",
+          "qty": 4,
+          "unit": "rectangulares",
+          "note": "3 si son discos",
+          "slotIds": [
+            "merienda",
+            "desayuno"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "proteinas",
+      "name": "Proteínas",
+      "aliases": [
+        "PROTEINAS"
+      ],
+      "examples": [
+        "pechuga de pollo",
+        "carne vacuna magra",
+        "pescado",
+        "atún",
+        "huevo",
+        "queso port salut",
+        "tofu",
+        "yogur natural",
+        "soja texturizada"
+      ],
+      "notes": "Objetivo de 120 g de proteína al día. Las equivalencias indican cuánta proteína aporta cada opción.",
+      "exchanges": [
+        {
+          "label": "Pechuga de pollo",
+          "qty": 100,
+          "unit": "g en crudo",
+          "proteinGrams": 20
+        },
+        {
+          "label": "Carne vacuna magra",
+          "qty": 100,
+          "unit": "g en crudo",
+          "proteinGrams": 22,
+          "note": "nalga, peceto, cuadril, bola de lomo, lomo"
+        },
+        {
+          "label": "Pescado",
+          "qty": 100,
+          "unit": "g en crudo",
+          "proteinGrams": 20,
+          "note": "merluza, brótola"
+        },
+        {
+          "label": "Atún al natural",
+          "qty": 1,
+          "unit": "lata",
+          "proteinGrams": 34
+        },
+        {
+          "label": "Huevo",
+          "qty": 3,
+          "unit": "unidades",
+          "proteinGrams": 20,
+          "note": "o 5 claras"
+        },
+        {
+          "label": "Queso port salut",
+          "qty": 80,
+          "unit": "g",
+          "proteinGrams": 20
+        },
+        {
+          "label": "Tofu",
+          "qty": 240,
+          "unit": "g (1 taza)",
+          "proteinGrams": 20
+        },
+        {
+          "label": "Yogur natural",
+          "qty": 140,
+          "unit": "g (1 vaso)",
+          "proteinGrams": 20
+        },
+        {
+          "label": "Soja texturizada",
+          "qty": 40,
+          "unit": "g",
+          "proteinGrams": 20,
+          "note": "7 cucharadas"
+        }
+      ]
+    },
+    {
+      "id": "vegetales",
+      "name": "Vegetales",
+      "aliases": [
+        "VEGETALES"
+      ],
+      "examples": [
+        "brócoli",
+        "berenjena",
+        "cebolla",
+        "coliflor",
+        "brotes",
+        "espárragos",
+        "lechuga",
+        "acelga",
+        "espinaca",
+        "kale",
+        "radicheta",
+        "rúcula",
+        "hinojo",
+        "pepino",
+        "tomate",
+        "remolacha",
+        "repollo",
+        "repollitos de bruselas",
+        "zanahoria",
+        "zapallito",
+        "zapallo",
+        "zucchini"
+      ],
+      "notes": "Un tercio del plato en almuerzo y cena. Crudos aprox. 150 g, cocidos aprox. 200 g.",
+      "exchanges": [
+        {
+          "label": "Vegetales crudos",
+          "qty": 150,
+          "unit": "g",
+          "note": "1/3 del plato",
+          "slotIds": [
+            "almuerzo",
+            "cena"
+          ]
+        },
+        {
+          "label": "Vegetales cocidos",
+          "qty": 200,
+          "unit": "g",
+          "note": "1/3 del plato",
+          "slotIds": [
+            "almuerzo",
+            "cena"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "frutas",
+      "name": "Frutas",
+      "aliases": [
+        "FRUTA"
+      ],
+      "examples": [
+        "manzana",
+        "banana",
+        "naranja",
+        "durazno",
+        "frutillas",
+        "pera",
+        "kiwi"
+      ],
+      "notes": "2 o 3 frutas por día.",
+      "exchanges": [
+        {
+          "label": "Fruta mediana",
+          "qty": 1,
+          "unit": "unidad"
+        }
+      ]
+    },
+    {
+      "id": "grasas",
+      "name": "Grasas saludables",
+      "aliases": [
+        "GRASA",
+        "GRASA SALUDABLE"
+      ],
+      "examples": [
+        "frutos secos",
+        "semillas",
+        "mantequilla de maní",
+        "palta",
+        "aceite de oliva"
+      ],
+      "notes": "Frutos secos, mantequilla de maní y palta: una sola vez al día. Si ya se usaron en otra comida, optar por aceite o semillas.",
+      "exchanges": [
+        {
+          "label": "Frutos secos",
+          "qty": 25,
+          "unit": "g",
+          "note": "1 puñado — máximo una vez al día"
+        },
+        {
+          "label": "Semillas",
+          "qty": 2,
+          "unit": "cdtas"
+        },
+        {
+          "label": "Mantequilla de maní",
+          "qty": 1,
+          "unit": "cda",
+          "note": "máximo una vez al día"
+        },
+        {
+          "label": "Palta",
+          "qty": 0.25,
+          "unit": "unidad",
+          "note": "máximo una vez al día"
+        },
+        {
+          "label": "Aceite de oliva",
+          "qty": 1,
+          "unit": "cda",
+          "note": "siempre en crudo, para condimentar"
+        }
+      ]
+    }
+  ],
+  "slots": [
+    {
+      "id": "desayuno",
+      "name": "Desayuno",
+      "defaultTime": "08:00",
+      "prepLeadMinutes": 15,
+      "formula": [
+        {
+          "groupId": "hidratos",
+          "cantidad": "1 opción"
+        },
+        {
+          "groupId": "proteinas",
+          "cantidad": "1 opción"
+        },
+        {
+          "groupId": "frutas",
+          "cantidad": "1 fruta"
+        },
+        {
+          "groupId": "grasas",
+          "cantidad": "1 opción"
+        }
+      ],
+      "notes": "Mismas ideas que la merienda. Desactivado mientras se haga ayuno intermitente."
+    },
+    {
+      "id": "almuerzo",
+      "name": "Almuerzo",
+      "defaultTime": "13:00",
+      "prepLeadMinutes": 45,
+      "formula": [
+        {
+          "groupId": "hidratos",
+          "cantidad": "1 opción"
+        },
+        {
+          "groupId": "proteinas",
+          "cantidad": "1 porción (aprox. 200 g)"
+        },
+        {
+          "groupId": "vegetales",
+          "cantidad": "1/3 del plato"
+        }
+      ]
+    },
+    {
+      "id": "merienda",
+      "name": "Merienda",
+      "defaultTime": "17:00",
+      "prepLeadMinutes": 15,
+      "formula": [
+        {
+          "groupId": "hidratos",
+          "cantidad": "1 opción"
+        },
+        {
+          "groupId": "proteinas",
+          "cantidad": "1 opción"
+        },
+        {
+          "groupId": "frutas",
+          "cantidad": "1 fruta"
+        },
+        {
+          "groupId": "grasas",
+          "cantidad": "1 opción"
+        }
+      ]
+    },
+    {
+      "id": "cena",
+      "name": "Cena",
+      "defaultTime": "21:00",
+      "prepLeadMinutes": 45,
+      "formula": [
+        {
+          "groupId": "hidratos",
+          "cantidad": "1 opción"
+        },
+        {
+          "groupId": "proteinas",
+          "cantidad": "1 porción (aprox. 200 g)"
+        },
+        {
+          "groupId": "vegetales",
+          "cantidad": "1/3 del plato"
+        }
+      ]
+    },
+    {
+      "id": "colacion",
+      "name": "Colación",
+      "defaultTime": "19:00",
+      "prepLeadMinutes": 0,
+      "isSnack": true,
+      "notes": "Siempre es mejor hacer la comida completa; estas son opciones transportables."
+    }
+  ],
+  "options": [
+    {
+      "id": "am-omelette-pollo",
+      "name": "Omelette rellena con pollo, queso y choclo",
+      "slotIds": [
+        "almuerzo",
+        "cena"
+      ],
+      "proteinGrams": 40,
+      "prepMinutes": 20,
+      "ingredients": [
+        {
+          "item": "Huevo",
+          "qty": 2,
+          "unit": "unidades",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Pollo",
+          "qty": 150,
+          "unit": "g",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Queso",
+          "qty": 30,
+          "unit": "g",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Choclo",
+          "qty": 0.5,
+          "unit": "unidad",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Lechuga",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Tomate",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Zanahoria",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        }
+      ]
+    },
+    {
+      "id": "am-cerdo-mostaza",
+      "name": "Cerdo a la mostaza con vegetales al horno",
+      "slotIds": [
+        "almuerzo",
+        "cena"
+      ],
+      "proteinGrams": 40,
+      "prepMinutes": 45,
+      "ingredients": [
+        {
+          "item": "Costeletitas de cerdo",
+          "qty": 2,
+          "unit": "unidades",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Mostaza",
+          "staple": true
+        },
+        {
+          "item": "Calabaza",
+          "qty": 200,
+          "unit": "g",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Zapallito",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Cebolla",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Morrón",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        }
+      ]
+    },
+    {
+      "id": "am-pollo-salteado",
+      "name": "Pollo salteado con verduras y arroz",
+      "slotIds": [
+        "almuerzo",
+        "cena"
+      ],
+      "proteinGrams": 40,
+      "prepMinutes": 30,
+      "ingredients": [
+        {
+          "item": "Pollo",
+          "qty": 200,
+          "unit": "g",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Arroz",
+          "qty": 70,
+          "unit": "g en crudo",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Cebolla",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Morrón",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Zanahoria",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Zapallito",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Aceite de oliva",
+          "groupId": "grasas",
+          "staple": true
+        }
+      ]
+    },
+    {
+      "id": "am-calabaza-rellena",
+      "name": "Calabaza rellena con pollo, choclo y queso",
+      "slotIds": [
+        "almuerzo",
+        "cena"
+      ],
+      "proteinGrams": 40,
+      "prepMinutes": 50,
+      "ingredients": [
+        {
+          "item": "Calabaza",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Pollo",
+          "qty": 200,
+          "unit": "g",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Cebolla",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Choclo",
+          "qty": 0.5,
+          "unit": "unidad",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Queso",
+          "qty": 30,
+          "unit": "g",
+          "groupId": "proteinas"
+        }
+      ]
+    },
+    {
+      "id": "am-hamburguesa-legumbres",
+      "name": "Hamburguesa de legumbres con ensalada y huevo",
+      "slotIds": [
+        "almuerzo",
+        "cena"
+      ],
+      "proteinGrams": 25,
+      "prepMinutes": 35,
+      "tags": [
+        "vegetariano"
+      ],
+      "ingredients": [
+        {
+          "item": "Legumbres",
+          "qty": 70,
+          "unit": "g en crudo",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Huevo",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Hojas verdes",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Tomate",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        }
+      ]
+    },
+    {
+      "id": "am-ensalada-garbanzos",
+      "name": "Ensalada de garbanzos con repollo y palta",
+      "slotIds": [
+        "almuerzo",
+        "cena"
+      ],
+      "proteinGrams": 20,
+      "prepMinutes": 20,
+      "tags": [
+        "vegetariano",
+        "rápido"
+      ],
+      "ingredients": [
+        {
+          "item": "Garbanzos",
+          "qty": 70,
+          "unit": "g en crudo",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Repollo blanco y morado",
+          "qty": 150,
+          "unit": "g",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Palta",
+          "qty": 0.25,
+          "unit": "unidad",
+          "groupId": "grasas"
+        },
+        {
+          "item": "Tomate",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        }
+      ]
+    },
+    {
+      "id": "am-pastel-calabaza",
+      "name": "Pastel de calabaza y papa con carne picada",
+      "slotIds": [
+        "almuerzo",
+        "cena"
+      ],
+      "proteinGrams": 44,
+      "prepMinutes": 60,
+      "ingredients": [
+        {
+          "item": "Calabaza",
+          "qty": 200,
+          "unit": "g",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Papa",
+          "qty": 120,
+          "unit": "g en crudo",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Carne picada magra",
+          "qty": 200,
+          "unit": "g",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Cebolla",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        }
+      ]
+    },
+    {
+      "id": "am-arroz-atun",
+      "name": "Arroz con atún y ensalada de chaucha y remolacha",
+      "slotIds": [
+        "almuerzo",
+        "cena"
+      ],
+      "proteinGrams": 34,
+      "prepMinutes": 25,
+      "ingredients": [
+        {
+          "item": "Arroz",
+          "qty": 70,
+          "unit": "g en crudo",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Atún al natural",
+          "qty": 1,
+          "unit": "lata",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Chaucha",
+          "qty": 150,
+          "unit": "g",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Remolacha",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        }
+      ]
+    },
+    {
+      "id": "am-tacos-integrales",
+      "name": "Tacos integrales rellenos con carne y vegetales",
+      "slotIds": [
+        "almuerzo",
+        "cena"
+      ],
+      "proteinGrams": 44,
+      "prepMinutes": 30,
+      "ingredients": [
+        {
+          "item": "Fajitas integrales",
+          "qty": 2,
+          "unit": "unidades",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Carne magra",
+          "qty": 200,
+          "unit": "g",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Cebolla",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Morrón",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Tomate",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Choclo",
+          "qty": 0.5,
+          "unit": "unidad",
+          "groupId": "hidratos"
+        }
+      ]
+    },
+    {
+      "id": "am-ensalada-fresca",
+      "name": "Ensalada fresca de fideos, garbanzos y huevo",
+      "slotIds": [
+        "almuerzo",
+        "cena"
+      ],
+      "proteinGrams": 27,
+      "prepMinutes": 25,
+      "tags": [
+        "vegetariano"
+      ],
+      "ingredients": [
+        {
+          "item": "Fideos tirabuzón integrales",
+          "qty": 100,
+          "unit": "g cocidos",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Garbanzos",
+          "qty": 70,
+          "unit": "g en crudo",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Palta",
+          "qty": 0.25,
+          "unit": "unidad",
+          "groupId": "grasas"
+        },
+        {
+          "item": "Tomates cherry",
+          "qty": 100,
+          "unit": "g",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Zanahoria rallada",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Huevo",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "proteinas"
+        }
+      ]
+    },
+    {
+      "id": "mer-pan-huevo-cherry",
+      "name": "Pan integral con huevos a la plancha y cherrys",
+      "slotIds": [
+        "merienda",
+        "desayuno"
+      ],
+      "proteinGrams": 14,
+      "prepMinutes": 10,
+      "tags": [
+        "salada",
+        "rápido"
+      ],
+      "ingredients": [
+        {
+          "item": "Pan integral",
+          "qty": 2,
+          "unit": "rebanadas",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Huevo",
+          "qty": 2,
+          "unit": "unidades",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Tomates cherry",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Aceite",
+          "staple": true
+        }
+      ],
+      "notes": "Se puede completar la proteína agregando leche al café."
+    },
+    {
+      "id": "mer-tostadas-francesas",
+      "name": "Tostadas francesas",
+      "slotIds": [
+        "merienda",
+        "desayuno"
+      ],
+      "proteinGrams": 10,
+      "prepMinutes": 15,
+      "tags": [
+        "dulce"
+      ],
+      "ingredients": [
+        {
+          "item": "Huevo",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Leche",
+          "qty": 4,
+          "unit": "cdas",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Pan integral de molde",
+          "qty": 2,
+          "unit": "rebanadas",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Frutas para toppings",
+          "groupId": "frutas"
+        },
+        {
+          "item": "Endulzante",
+          "staple": true
+        },
+        {
+          "item": "Esencia de vainilla",
+          "staple": true
+        }
+      ]
+    },
+    {
+      "id": "mer-licuado",
+      "name": "Licuado de banana con avena",
+      "slotIds": [
+        "merienda",
+        "desayuno"
+      ],
+      "proteinGrams": 12,
+      "prepMinutes": 5,
+      "tags": [
+        "dulce",
+        "rápido"
+      ],
+      "ingredients": [
+        {
+          "item": "Banana",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "frutas"
+        },
+        {
+          "item": "Durazno o frutilla",
+          "groupId": "frutas"
+        },
+        {
+          "item": "Leche",
+          "qty": 1,
+          "unit": "vaso",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Avena instantánea",
+          "qty": 3,
+          "unit": "cdas",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Hielo",
+          "staple": true
+        }
+      ]
+    },
+    {
+      "id": "mer-fajita-rellena",
+      "name": "Fajita rellena con huevo, tomate y queso",
+      "slotIds": [
+        "merienda",
+        "desayuno"
+      ],
+      "proteinGrams": 20,
+      "prepMinutes": 15,
+      "tags": [
+        "salada"
+      ],
+      "ingredients": [
+        {
+          "item": "Fajita integral",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Huevo",
+          "qty": 2,
+          "unit": "unidades",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Tomate",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Queso",
+          "qty": 30,
+          "unit": "g",
+          "groupId": "proteinas"
+        }
+      ]
+    },
+    {
+      "id": "mer-chia-pudding",
+      "name": "Chía pudding",
+      "slotIds": [
+        "merienda",
+        "desayuno",
+        "colacion"
+      ],
+      "proteinGrams": 8,
+      "prepMinutes": 5,
+      "tags": [
+        "dulce",
+        "rápido"
+      ],
+      "ingredients": [
+        {
+          "item": "Leche",
+          "qty": 0.5,
+          "unit": "taza",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Semillas de chía",
+          "qty": 1,
+          "unit": "cda",
+          "groupId": "grasas"
+        },
+        {
+          "item": "Cacao amargo",
+          "qty": 1,
+          "unit": "cda",
+          "staple": true
+        },
+        {
+          "item": "Endulzante",
+          "staple": true
+        }
+      ],
+      "notes": "Reposa en la heladera de un día para el otro. Se le pueden sumar frutas y frutos secos."
+    },
+    {
+      "id": "mer-palta-poche",
+      "name": "Pan integral con palta y huevo poché",
+      "slotIds": [
+        "merienda",
+        "desayuno"
+      ],
+      "proteinGrams": 14,
+      "prepMinutes": 15,
+      "tags": [
+        "salada"
+      ],
+      "ingredients": [
+        {
+          "item": "Pan integral",
+          "qty": 2,
+          "unit": "rodajas",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Palta",
+          "qty": 0.25,
+          "unit": "unidad",
+          "groupId": "grasas"
+        },
+        {
+          "item": "Huevo",
+          "qty": 2,
+          "unit": "unidades",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Semillas varias",
+          "groupId": "grasas"
+        },
+        {
+          "item": "Fruta",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "frutas"
+        },
+        {
+          "item": "Limón",
+          "staple": true
+        }
+      ]
+    },
+    {
+      "id": "mer-revueltos-queso",
+      "name": "Huevos revueltos con queso y frutos secos",
+      "slotIds": [
+        "merienda",
+        "desayuno"
+      ],
+      "proteinGrams": 20,
+      "prepMinutes": 10,
+      "tags": [
+        "salada",
+        "rápido"
+      ],
+      "ingredients": [
+        {
+          "item": "Huevo",
+          "qty": 2,
+          "unit": "unidades",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Queso",
+          "qty": 30,
+          "unit": "g",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Frutos secos",
+          "qty": 25,
+          "unit": "g",
+          "groupId": "grasas"
+        },
+        {
+          "item": "Naranja",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "frutas"
+        },
+        {
+          "item": "Galleta de arroz o pan integral",
+          "groupId": "hidratos"
+        }
+      ],
+      "notes": "En el PDF esta idea viene sin hidratos: hay que sumarlos aparte."
+    },
+    {
+      "id": "mer-pan-queso-tomate",
+      "name": "Pan integral con queso cremoso y tomate",
+      "slotIds": [
+        "merienda",
+        "desayuno"
+      ],
+      "proteinGrams": 12,
+      "prepMinutes": 5,
+      "tags": [
+        "salada",
+        "rápido"
+      ],
+      "ingredients": [
+        {
+          "item": "Pan integral",
+          "qty": 2,
+          "unit": "rebanadas",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Tomate",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "vegetales"
+        },
+        {
+          "item": "Queso cremoso bajo en grasas",
+          "qty": 2,
+          "unit": "rebanadas",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Frutos secos",
+          "qty": 25,
+          "unit": "g",
+          "groupId": "grasas"
+        }
+      ]
+    },
+    {
+      "id": "mer-panqueque-manzana",
+      "name": "Panqueque de manzana",
+      "slotIds": [
+        "merienda",
+        "desayuno"
+      ],
+      "proteinGrams": 14,
+      "prepMinutes": 15,
+      "tags": [
+        "dulce"
+      ],
+      "ingredients": [
+        {
+          "item": "Huevo",
+          "qty": 2,
+          "unit": "unidades",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Avena en polvo",
+          "qty": 2,
+          "unit": "cdas",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Harina de avena",
+          "qty": 8,
+          "unit": "cdas",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Manzana",
+          "qty": 0.5,
+          "unit": "unidad",
+          "groupId": "frutas"
+        },
+        {
+          "item": "Endulzante",
+          "staple": true
+        }
+      ]
+    },
+    {
+      "id": "mer-trufas",
+      "name": "Trufas de banana y avena",
+      "slotIds": [
+        "merienda",
+        "colacion"
+      ],
+      "proteinGrams": 6,
+      "prepMinutes": 15,
+      "tags": [
+        "dulce"
+      ],
+      "ingredients": [
+        {
+          "item": "Banana",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "frutas"
+        },
+        {
+          "item": "Avena instantánea",
+          "qty": 0.75,
+          "unit": "taza",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Dulce de leche light",
+          "qty": 2,
+          "unit": "cdas",
+          "staple": true
+        },
+        {
+          "item": "Coco rallado",
+          "staple": true
+        }
+      ],
+      "notes": "Salen 10 trufas. Consumir 4 o 5 acompañadas de yogur, leche o fruta."
+    },
+    {
+      "id": "mer-trufas-chocolate",
+      "name": "Trufas de chocolate y pasta de maní",
+      "slotIds": [
+        "merienda",
+        "colacion"
+      ],
+      "proteinGrams": 8,
+      "prepMinutes": 15,
+      "tags": [
+        "dulce"
+      ],
+      "ingredients": [
+        {
+          "item": "Avena",
+          "qty": 1,
+          "unit": "taza",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Cacao en polvo",
+          "qty": 0.25,
+          "unit": "taza",
+          "staple": true
+        },
+        {
+          "item": "Dátiles",
+          "qty": 0.25,
+          "unit": "taza",
+          "groupId": "frutas"
+        },
+        {
+          "item": "Pasta de maní",
+          "qty": 2,
+          "unit": "cdas",
+          "groupId": "grasas"
+        },
+        {
+          "item": "Coco rallado",
+          "staple": true
+        }
+      ],
+      "notes": "Consumir 4 o 5 acompañadas de yogur, leche o fruta."
+    },
+    {
+      "id": "mer-omelette-queso",
+      "name": "Omelette con queso, frutos secos y fruta",
+      "slotIds": [
+        "merienda",
+        "desayuno"
+      ],
+      "proteinGrams": 20,
+      "prepMinutes": 10,
+      "tags": [
+        "salada",
+        "rápido"
+      ],
+      "ingredients": [
+        {
+          "item": "Huevo",
+          "qty": 2,
+          "unit": "unidades",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Queso",
+          "qty": 30,
+          "unit": "g",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Frutos secos",
+          "qty": 25,
+          "unit": "g",
+          "groupId": "grasas"
+        },
+        {
+          "item": "Fruta",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "frutas"
+        }
+      ]
+    },
+    {
+      "id": "mer-tostada-hummus",
+      "name": "Tostada con hummus, frutos secos y semillas",
+      "slotIds": [
+        "merienda",
+        "desayuno"
+      ],
+      "proteinGrams": 10,
+      "prepMinutes": 5,
+      "tags": [
+        "salada",
+        "rápido",
+        "vegetariano"
+      ],
+      "ingredients": [
+        {
+          "item": "Pan lactal integral",
+          "qty": 2,
+          "unit": "rebanadas",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Hummus",
+          "qty": 2,
+          "unit": "cdas",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Frutos secos",
+          "qty": 25,
+          "unit": "g",
+          "groupId": "grasas"
+        },
+        {
+          "item": "Semillas",
+          "qty": 2,
+          "unit": "cdtas",
+          "groupId": "grasas"
+        }
+      ]
+    },
+    {
+      "id": "mer-panqueque-chocolate",
+      "name": "Panqueque de chocolate y banana",
+      "slotIds": [
+        "merienda",
+        "desayuno"
+      ],
+      "proteinGrams": 16,
+      "prepMinutes": 15,
+      "tags": [
+        "dulce"
+      ],
+      "ingredients": [
+        {
+          "item": "Huevo",
+          "qty": 2,
+          "unit": "unidades",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Leche",
+          "qty": 0.5,
+          "unit": "taza",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Cacao amargo o harina de algarroba",
+          "qty": 2,
+          "unit": "cdas",
+          "staple": true
+        },
+        {
+          "item": "Harina de avena",
+          "qty": 2,
+          "unit": "cdas",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Banana",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "frutas"
+        },
+        {
+          "item": "Polvo de hornear",
+          "staple": true
+        }
+      ]
+    },
+    {
+      "id": "mer-mugcake",
+      "name": "Mugcake en microondas",
+      "slotIds": [
+        "merienda",
+        "desayuno"
+      ],
+      "proteinGrams": 12,
+      "prepMinutes": 5,
+      "tags": [
+        "dulce",
+        "rápido"
+      ],
+      "ingredients": [
+        {
+          "item": "Huevo",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Leche",
+          "qty": 4,
+          "unit": "cdas",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Avena",
+          "qty": 4,
+          "unit": "cdas",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Harina integral",
+          "qty": 2,
+          "unit": "cdas",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Polvo de hornear",
+          "staple": true
+        },
+        {
+          "item": "Endulzante",
+          "staple": true
+        }
+      ],
+      "notes": "Aprox. 2 minutos, chequeando cada 30 segundos. Acompañar con una fruta."
+    },
+    {
+      "id": "mer-panqueque-algarroba",
+      "name": "Panqueque de algarroba",
+      "slotIds": [
+        "merienda",
+        "desayuno"
+      ],
+      "proteinGrams": 14,
+      "prepMinutes": 15,
+      "tags": [
+        "dulce"
+      ],
+      "ingredients": [
+        {
+          "item": "Huevo",
+          "qty": 2,
+          "unit": "unidades",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Leche",
+          "qty": 4,
+          "unit": "cdas",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Harina de algarroba",
+          "qty": 6,
+          "unit": "cdas",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Harina de avena",
+          "qty": 8,
+          "unit": "cdas",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Fruta para acompañar",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "frutas"
+        }
+      ]
+    },
+    {
+      "id": "mer-bowl-yogur",
+      "name": "Bowl de yogur con granola y fruta",
+      "slotIds": [
+        "merienda",
+        "desayuno",
+        "colacion"
+      ],
+      "proteinGrams": 20,
+      "prepMinutes": 3,
+      "tags": [
+        "dulce",
+        "rápido"
+      ],
+      "ingredients": [
+        {
+          "item": "Yogur natural",
+          "qty": 140,
+          "unit": "g",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Granola o avena",
+          "qty": 40,
+          "unit": "g",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Semillas de chía",
+          "qty": 2,
+          "unit": "cdtas",
+          "groupId": "grasas"
+        },
+        {
+          "item": "Durazno u otra fruta",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "frutas"
+        }
+      ]
+    },
+    {
+      "id": "col-huevo-fruta",
+      "name": "Huevo duro + fruta",
+      "slotIds": [
+        "colacion"
+      ],
+      "proteinGrams": 7,
+      "prepMinutes": 10,
+      "tags": [
+        "transportable"
+      ],
+      "ingredients": [
+        {
+          "item": "Huevo",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Fruta",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "frutas"
+        }
+      ]
+    },
+    {
+      "id": "col-queso-cherry",
+      "name": "Cubos de queso fresco + tomates cherry",
+      "slotIds": [
+        "colacion"
+      ],
+      "proteinGrams": 10,
+      "prepMinutes": 3,
+      "tags": [
+        "transportable",
+        "rápido"
+      ],
+      "ingredients": [
+        {
+          "item": "Queso fresco",
+          "qty": 40,
+          "unit": "g",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Tomates cherry",
+          "qty": 100,
+          "unit": "g",
+          "groupId": "vegetales"
+        }
+      ]
+    },
+    {
+      "id": "col-fruta-secos",
+      "name": "Fruta + 1 puñado de frutos secos",
+      "slotIds": [
+        "colacion"
+      ],
+      "proteinGrams": 5,
+      "prepMinutes": 1,
+      "tags": [
+        "transportable",
+        "rápido"
+      ],
+      "ingredients": [
+        {
+          "item": "Fruta",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "frutas"
+        },
+        {
+          "item": "Frutos secos",
+          "qty": 25,
+          "unit": "g",
+          "groupId": "grasas"
+        }
+      ]
+    },
+    {
+      "id": "col-yogur-granola",
+      "name": "Yogur con granola y frutas",
+      "slotIds": [
+        "colacion"
+      ],
+      "proteinGrams": 20,
+      "prepMinutes": 3,
+      "tags": [
+        "transportable",
+        "rápido"
+      ],
+      "ingredients": [
+        {
+          "item": "Yogur natural",
+          "qty": 140,
+          "unit": "g",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Granola",
+          "qty": 40,
+          "unit": "g",
+          "groupId": "hidratos"
+        },
+        {
+          "item": "Fruta",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "frutas"
+        }
+      ]
+    },
+    {
+      "id": "col-ensalada-frutas",
+      "name": "Ensalada de frutas",
+      "slotIds": [
+        "colacion"
+      ],
+      "proteinGrams": 1,
+      "prepMinutes": 10,
+      "tags": [
+        "transportable"
+      ],
+      "ingredients": [
+        {
+          "item": "Frutas variadas",
+          "qty": 2,
+          "unit": "unidades",
+          "groupId": "frutas"
+        }
+      ]
+    },
+    {
+      "id": "col-yogur-barrita",
+      "name": "Yogur con barrita",
+      "slotIds": [
+        "colacion"
+      ],
+      "proteinGrams": 22,
+      "prepMinutes": 1,
+      "tags": [
+        "transportable",
+        "rápido"
+      ],
+      "ingredients": [
+        {
+          "item": "Yogur natural",
+          "qty": 140,
+          "unit": "g",
+          "groupId": "proteinas"
+        },
+        {
+          "item": "Barrita de cereal",
+          "qty": 1,
+          "unit": "unidad",
+          "groupId": "hidratos",
+          "note": "casera o marcas recomendadas: Íntegra, Prota, Pont, Ki-bar"
+        }
+      ]
+    }
+  ]
+}

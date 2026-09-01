@@ -20,6 +20,28 @@ export type PlateTarget = Record<string, number>;
 /** Porciones por grupo de alimento. */
 export type Portions = Record<string, number>;
 
+/**
+ * Una equivalencia dentro de un grupo: las opciones intercambiables entre si.
+ * "70 g de arroz" y "120 g de papa" son el mismo hidrato a los ojos del plan.
+ */
+export interface ExchangeOption {
+  label: string;
+  qty?: number;
+  unit?: string;
+  note?: string;
+  /** Proteina que aporta, en gramos. Solo tiene sentido en el grupo proteinas. */
+  proteinGrams?: number;
+  /** Momentos donde aplica esta equivalencia. Si se omite, todos. */
+  slotIds?: string[];
+}
+
+/** Un componente exigido por la formula de una comida. */
+export interface ComponentSpec {
+  groupId: string;
+  /** Como lo expresa el plan: "1 opcion", "1/3 del plato", "1 fruta". */
+  cantidad: string;
+}
+
 export interface FoodGroup {
   id: string;
   name: string;
@@ -28,6 +50,8 @@ export interface FoodGroup {
   /** Alimentos de ejemplo del grupo. */
   examples: string[];
   notes?: string;
+  /** Opciones intercambiables del grupo, con sus cantidades. */
+  exchanges?: ExchangeOption[];
 }
 
 export interface Ingredient {
@@ -38,6 +62,7 @@ export interface Ingredient {
   /** A que grupo de alimentos pertenece. */
   groupId?: string;
   optional?: boolean;
+  note?: string;
   /** Sal, aceite, especias: se asumen en la alacena y no van a la lista de compras. */
   staple?: boolean;
 }
@@ -55,6 +80,8 @@ export interface MealOption {
   tags?: string[];
   prepMinutes?: number;
   notes?: string;
+  /** Proteina que aporta la opcion completa, en gramos. */
+  proteinGrams?: number;
 }
 
 export interface MealSlot {
@@ -68,6 +95,14 @@ export interface MealSlot {
   /** Usa `plateDefault` del plan cuando no define un `plateTarget` propio. */
   usesPlateMethod?: boolean;
   isSnack?: boolean;
+  /**
+   * Como se arma la comida: los componentes que hay que elegir.
+   * Es la forma real de los planes por intercambios, donde el plan no dicta
+   * platos cerrados sino una combinacion ("1 hidrato + 1 proteina + 1/3 de
+   * vegetales") que se completa eligiendo de las listas de equivalencias.
+   */
+  formula?: ComponentSpec[];
+  notes?: string;
 }
 
 export interface NutritionPlan {
@@ -84,6 +119,8 @@ export interface NutritionPlan {
   plateDefault?: PlateTarget;
   /** Notas generales del plan que conviene tener a mano. */
   guidelines?: string[];
+  /** Objetivo diario de proteina en gramos, si el plan lo fija asi. */
+  proteinTargetGrams?: number;
 }
 
 export interface SlotConfig {
@@ -150,8 +187,16 @@ export interface GroupBalance {
   remaining: number;
 }
 
+export interface ProteinBalance {
+  target: number;
+  consumed: number;
+  remaining: number;
+}
+
 export interface DailyBalance {
   groups: GroupBalance[];
+  /** Presente solo si el plan fija un objetivo proteico en gramos. */
+  protein?: ProteinBalance;
   /** Texto listo para mostrar: que falta cubrir en lo que queda del dia. */
   advice: string[];
 }

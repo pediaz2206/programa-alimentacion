@@ -44,6 +44,28 @@ export function validatePlan(plan: NutritionPlan): string[] {
     }
   }
 
+  for (const group of plan.foodGroups) {
+    for (const ex of group.exchanges ?? []) {
+      for (const slotId of ex.slotIds ?? []) {
+        if (!slotIds.has(slotId)) {
+          errors.push(`Grupo "${group.id}": la equivalencia "${ex.label}" referencia el momento inexistente "${slotId}".`);
+        }
+      }
+    }
+  }
+
+  for (const slot of plan.slots) {
+    for (const comp of slot.formula ?? []) {
+      if (!groupIds.has(comp.groupId)) {
+        errors.push(`Slot "${slot.id}": la fórmula referencia el grupo inexistente "${comp.groupId}".`);
+      }
+    }
+  }
+
+  if (plan.proteinTargetGrams != null && plan.proteinTargetGrams <= 0) {
+    errors.push(`proteinTargetGrams debe ser mayor a 0 (se pasó ${plan.proteinTargetGrams}).`);
+  }
+
   for (const groupId of Object.keys(plan.dailyTargets ?? {})) {
     if (!groupIds.has(groupId)) {
       errors.push(`dailyTargets: grupo inexistente "${groupId}".`);

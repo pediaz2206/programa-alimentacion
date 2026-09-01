@@ -7,6 +7,8 @@ export interface SelectionContext {
   remaining?: Portions;
   /** Opciones ya sugeridas hoy: se mandan al final para no repetir plato. */
   avoidIds?: string[];
+  /** Gramos de proteina que faltan para el objetivo del dia. */
+  remainingProtein?: number;
 }
 
 function hash(text: string): number {
@@ -15,13 +17,30 @@ function hash(text: string): number {
   return Math.abs(h);
 }
 
-/** Cuanto ayuda esta opcion a cubrir lo que falta del dia. */
-export function gapScore(option: MealOption, remaining: Portions | undefined): number {
-  if (!remaining || !option.portions) return 0;
+/** Una porcion equivale aproximadamente a este aporte proteico. */
+const GRAMOS_POR_PORCION = 20;
+
+/**
+ * Cuanto ayuda esta opcion a cubrir lo que falta del dia.
+ *
+ * Suma dos cosas que los planes expresan de forma distinta: porciones por grupo
+ * y gramos de proteina. Los gramos se normalizan a porciones para que las dos
+ * escalas pesen parecido.
+ */
+export function gapScore(
+  option: MealOption,
+  remaining: Portions | undefined,
+  remainingProtein?: number,
+): number {
   let score = 0;
-  for (const [groupId, amount] of Object.entries(option.portions)) {
-    const missing = remaining[groupId] ?? 0;
-    if (missing > 0) score += Math.min(amount, missing);
+  if (remaining && option.portions) {
+    for (const [groupId, amount] of Object.entries(option.portions)) {
+      const missing = remaining[groupId] ?? 0;
+      if (missing > 0) score += Math.min(amount, missing);
+    }
+  }
+  if (remainingProtein && remainingProtein > 0 && option.proteinGrams) {
+    score += Math.min(option.proteinGrams, remainingProtein) / GRAMOS_POR_PORCION;
   }
   return score;
 }
@@ -60,7 +79,7 @@ export function suggestOptions(
       option,
       position,
       repeated: avoid.has(option.id) ? 1 : 0,
-      score: gapScore(option, ctx.remaining),
+      score: gapScore(option, ctx.remaining, ctx.remainingProtein),
     }))
     .sort(
       (a, b) => a.repeated - b.repeated || b.score - a.score || a.position - b.position,

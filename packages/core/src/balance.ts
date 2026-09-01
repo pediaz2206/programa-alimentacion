@@ -15,6 +15,10 @@ export function sumPortions(options: MealOption[]): Portions {
  * El "complementar entre comidas" del plan: cuanto falta de cada grupo
  * para cerrar el dia, dado lo que ya se comio.
  */
+export function sumProtein(options: MealOption[]): number {
+  return options.reduce((total, o) => total + (o.proteinGrams ?? 0), 0);
+}
+
 export function computeDailyBalance(plan: NutritionPlan, consumed: MealOption[]): DailyBalance {
   const targets = plan.dailyTargets ?? {};
   const eaten = sumPortions(consumed);
@@ -33,6 +37,20 @@ export function computeDailyBalance(plan: NutritionPlan, consumed: MealOption[])
   });
 
   const advice: string[] = [];
+
+  let protein;
+  if (plan.proteinTargetGrams != null) {
+    const got = sumProtein(consumed);
+    protein = {
+      target: plan.proteinTargetGrams,
+      consumed: round(got),
+      remaining: round(Math.max(0, plan.proteinTargetGrams - got)),
+    };
+    if (protein.remaining > 0) {
+      advice.push(`Faltan ${protein.remaining} g de proteína`);
+    }
+  }
+
   for (const g of groups) {
     if (g.remaining > 0) {
       advice.push(`Faltan ${fmt(g.remaining)} de ${g.groupName.toLowerCase()}`);
@@ -40,9 +58,11 @@ export function computeDailyBalance(plan: NutritionPlan, consumed: MealOption[])
       advice.push(`${g.groupName} ya supera el objetivo (${fmt(g.consumed)} de ${fmt(g.target)})`);
     }
   }
-  if (advice.length === 0 && groups.length > 0) advice.push('Dia completo: todos los grupos cubiertos.');
+  if (advice.length === 0 && (groups.length > 0 || protein)) {
+    advice.push('Dia completo: todos los objetivos cubiertos.');
+  }
 
-  return { groups, advice };
+  return protein ? { groups, protein, advice } : { groups, advice };
 }
 
 /** Lo que falta, en el formato que consume el selector de sugerencias. */
