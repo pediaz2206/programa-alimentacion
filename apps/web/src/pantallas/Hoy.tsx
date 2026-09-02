@@ -1,10 +1,10 @@
+import { useState } from 'react';
 import {
-  estadoActual, formatTime, humanizeMinutes, parseTime,
+  ajusteDeVentana, aplicarAjuste, estadoActual, humanizeMinutes,
   type Momento, type NutritionPlan, type ScheduledEvent, type UserConfig,
 } from '@pa/core';
-import { Dial } from '../componentes/Dial.tsx';
+import { Ventana } from '../componentes/Ventana.tsx';
 import { Aviso } from '../componentes/Aviso.tsx';
-import { Seccion } from '../componentes/Seccion.tsx';
 import { Encabezado } from '../componentes/Encabezado.tsx';
 import { balanceDe } from '../lib/datos.ts';
 import { fechaISO, opcionesDe, type Registro } from '../lib/registro.ts';
@@ -17,23 +17,41 @@ interface Props {
   registros: Registro[];
   onRegistrar: (evento: ScheduledEvent) => void;
   onIrARegistro: () => void;
+  onIrAAjustes: () => void;
+  onConfig: (c: UserConfig) => void;
 }
 
-export function Hoy({ plan, eventos, ahora, config, registros, onRegistrar, onIrARegistro }: Props) {
+export function Hoy({ plan, eventos, ahora, config, registros, onRegistrar, onIrARegistro, onIrAAjustes, onConfig }: Props) {
   const hoy = fechaISO();
   const deHoy = registros.filter((r) => r.fecha === hoy);
   const slotsRegistrados = deHoy.map((r) => r.slotId);
   const momento = estadoActual(eventos, ahora, slotsRegistrados);
   const balance = balanceDe(plan, opcionesDe(plan, deHoy));
   const comidas = eventos.filter((e) => e.kind === 'meal');
+  const ajuste = ajusteDeVentana(plan, config);
 
   return (
     <>
       <Encabezado
         eyebrow={new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
         titulo="Hoy"
-        extra={<EstadoVentana config={config} ahora={ahora} />}
       />
+
+      <Ventana ayuno={config.fasting} ahora={ahora} onTocar={onIrAAjustes} />
+
+      {ajuste.tipo !== 'ok' && (
+        <section className="arreglo">
+          <p>
+            {ajuste.tipo === 'mover'
+              ? 'Alguna comida quedó fuera de tu ventana de alimentación.'
+              : 'Tus comidas ya no entran en la ventana que tenías.'}
+          </p>
+          <button className="boton boton-lleno boton-ancho"
+                  onClick={() => onConfig(aplicarAjuste(config, ajuste))}>
+            {ajuste.descripcion}
+          </button>
+        </section>
+      )}
 
       <Ahora momento={momento} eventos={eventos} ahora={ahora} onRegistrar={onRegistrar} />
 
@@ -70,18 +88,8 @@ export function Hoy({ plan, eventos, ahora, config, registros, onRegistrar, onIr
         </div>
       </div>
 
-      <Seccion
-        titulo="El resto del día"
-        resumen={resumenPendiente(eventos, ahora)}
-      >
-        <LineaDelDia eventos={eventos} ahora={ahora} momento={momento} />
-      </Seccion>
+      <LoQueViene eventos={eventos} ahora={ahora} momento={momento} />
 
-      {config.fasting?.enabled && (
-        <Seccion titulo="Ventana de alimentación" resumen={resumenVentana(config, ahora)}>
-          <Dial eventos={eventos} ahora={ahora} ayuno={config.fasting} />
-        </Seccion>
-      )}
     </>
   );
 }
@@ -193,61 +201,61 @@ function sinHora(titulo: string): string {
   return titulo.replace(/\s*[-–]\s*\d{2}:\d{2}\s*$/, '');
 }
 
-function LineaDelDia({ eventos, ahora, momento }: { eventos: ScheduledEvent[]; ahora: number; momento: Momento }) {
+/**
+ * Lo que queda del día, en una línea por evento.
+ *
+ * No va plegado: dejaba media pantalla vacía, y lo que sigue es justamente lo
+ * que uno mira. Lo que ya pasó sí se esconde: no hay nada que hacer con eso.
+ */
+function LoQueViene({ eventos, ahora, momento }: {
+  eventos: ScheduledEvent[]; ahora: number; momento: Momento;
+}) {
+  const [verPasado, setVerPasado] = useState(false);
+  const pasados = eventos.filter((e) => e.minutes <= ahora);
+  const futuros = eventos.filter((e) => e.minutes > ahora);
+  const mostrados = verPasado ? eventos : futuros;
+
+  if (eventos.length === 0) return null;
+
   return (
-    <div className="riel">
-      {eventos.map((e, n) => {
-        const clases = ['fila'];
-        if (e.minutes <= ahora) clases.push('pasado');
-        if (e === momento.evento) clases.push('actual');
-        if (e.kind.startsWith('fast')) clases.push('ayuno');
-        if (e.freeMeal) clases.push('libre');
-        return (
-          <div className={clases.join(' ')} key={n}>
-            <div className="hora mono">{e.time}</div>
-            <div className="eje"><span className="marca" /></div>
-            <div className="cuerpo">
-              <div className="que">
-                {e.title}
-                {e.freeMeal && <span className="sello">20%</span>}
-              </div>
-              <div className="detalle">{e.body}</div>
-              {e.warnings?.map((w, i) => (
-                <div style={{ marginTop: 7 }} key={i}><Aviso texto={w} /></div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-    </div>
+    <section className="agenda">
+      <h3 className="encabezado-seccion">
+        {futuros.length === 0 ? 'Nada más por hoy' : 'Lo que viene'}
+      </h3>
+      <ul className="agenda-lista">
+        {mostrados.map((e, n) => (
+          <li
+            key={n}
+            className={[
+              'agenda-fila',
+              e.minutes <= ahora ? 'pasado' : '',
+              e === momento.evento ? 'actual' : '',
+            ].join(' ')}
+          >
+            <span className="agenda-hora mono">{e.time}</span>
+            <span className={`agenda-punto ${claseDe(e)}`} aria-hidden="true" />
+            <span className="agenda-que">
+              {e.title}
+              {e.freeMeal && <span className="sello">20%</span>}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {pasados.length > 0 && (
+        <button className="agenda-mas" onClick={() => setVerPasado((v) => !v)}>
+          {verPasado
+            ? 'Ocultar lo anterior'
+            : `Ver lo que ya pasó (${pasados.length})`}
+        </button>
+      )}
+    </section>
   );
 }
 
-function EstadoVentana({ config, ahora }: { config: UserConfig; ahora: number }) {
-  const ayuno = config.fasting;
-  if (!ayuno?.enabled) return null;
-  const inicio = parseTime(ayuno.eatingWindowStart);
-  const duracion = Math.round(ayuno.eatingWindowHours * 60);
-  const dentro = ((ahora - inicio) % 1440 + 1440) % 1440 < duracion;
-  return (
-    <span className={`chip ${dentro ? 'chip-verde' : 'chip-indigo'}`}>
-      {dentro ? 'Ventana abierta' : 'En ayuno'}
-    </span>
-  );
+function claseDe(e: ScheduledEvent): string {
+  if (e.freeMeal) return 'libre';
+  if (e.kind.startsWith('fast')) return 'ayuno';
+  if (e.kind === 'prep-check') return 'preparar';
+  return 'comida';
 }
 
-function resumenVentana(config: UserConfig, ahora: number): string {
-  const ayuno = config.fasting!;
-  const inicio = parseTime(ayuno.eatingWindowStart);
-  const cierre = (inicio + Math.round(ayuno.eatingWindowHours * 60)) % 1440;
-  const dentro = ((ahora - inicio) % 1440 + 1440) % 1440 < Math.round(ayuno.eatingWindowHours * 60);
-  return dentro
-    ? `Cierra a las ${formatTime(cierre)}`
-    : `Abre a las ${formatTime(inicio)}`;
-}
-
-function resumenPendiente(eventos: ScheduledEvent[], ahora: number): string {
-  const faltan = eventos.filter((e) => e.minutes > ahora).length;
-  if (faltan === 0) return 'Nada más por hoy';
-  return `${faltan} ${faltan === 1 ? 'evento' : 'eventos'} por delante`;
-}

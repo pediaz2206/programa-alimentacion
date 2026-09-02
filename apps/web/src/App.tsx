@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import type { ScheduledEvent } from '@pa/core';
+import type { ScheduledEvent, UserConfig } from '@pa/core';
 import { agendaDe, minutosAhora } from './lib/datos.ts';
 import { configEmpaquetada, planEmpaquetado } from './lib/semilla.ts';
 import {
@@ -138,6 +138,11 @@ export function App() {
     [datos.plan, datos.config],
   );
 
+  function guardarConfigLocal(c: UserConfig) {
+    setDatos((d) => ({ ...d, config: c }));
+    void guardarConfig(sesion, c).catch((e) => setError(mensaje(e)));
+  }
+
   async function alGuardar(r: Fila) {
     setGuardando(true);
     try {
@@ -187,6 +192,8 @@ export function App() {
             registros={registros}
             onRegistrar={(e) => void alGuardar(desdeEvento(e))}
             onIrARegistro={() => setPestana('registro')}
+            onIrAAjustes={() => setPestana('ajustes')}
+            onConfig={guardarConfigLocal}
           />
         )}
         {pestana === 'plan' && <Plan plan={datos.plan} config={datos.config} />}
@@ -205,10 +212,7 @@ export function App() {
           <Ajustes
             plan={datos.plan}
             config={datos.config}
-            onConfig={(c) => {
-              setDatos((d) => ({ ...d, config: c }));
-              void guardarConfig(sesion, c).catch((e) => setError(mensaje(e)));
-            }}
+            onConfig={guardarConfigLocal}
             tema={tema}
             onTema={setTema}
             sesion={sesion}

@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
-import type { NutritionPlan, UserConfig } from '@pa/core';
+import { ajusteDeVentana, aplicarAjuste, type NutritionPlan, type UserConfig } from '@pa/core';
 import { entrarConGoogle, hayBackend, salir } from '../lib/supabase.ts';
 import { nombresSlot } from '../lib/datos.ts';
 import { Notificaciones } from '../componentes/Notificaciones.tsx';
@@ -17,6 +17,13 @@ interface Props {
   onEsProfesional: (v: boolean) => void;
 }
 
+/** El cierre no se guarda: se deriva del inicio y la duración. */
+function cierreDe(inicio: string, horas: number): string {
+  const [h, m] = inicio.split(':').map(Number);
+  const total = ((h ?? 0) * 60 + (m ?? 0) + Math.round(horas * 60)) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
 export function Ajustes({ plan, config, onConfig, tema, onTema, sesion, esProfesional, onEsProfesional }: Props) {
   const NOMBRE_SLOT = nombresSlot(plan);
   function cambiarHora(slotId: string, time: string) {
@@ -27,6 +34,7 @@ export function Ajustes({ plan, config, onConfig, tema, onTema, sesion, esProfes
   }
 
   const ayuno = config.fasting;
+  const ajuste = ajusteDeVentana(plan, config);
 
   return (
     <>
@@ -50,6 +58,11 @@ export function Ajustes({ plan, config, onConfig, tema, onTema, sesion, esProfes
       {ayuno && (
         <section className="tarjeta">
           <h3 className="encabezado-seccion" style={{ margin: 0 }}>Ayuno intermitente</h3>
+          <p className="nota">
+            La <b>ventana de alimentación</b> es la franja del día en la que comés. Fuera
+            de esa franja, ayunás. Un 16:8 son 8 horas para comer y 16 sin comer, contando
+            las que dormís.
+          </p>
           <div className="campo">
             <label htmlFor="ayuno-on">Activado</label>
             <input
@@ -82,8 +95,24 @@ export function Ajustes({ plan, config, onConfig, tema, onTema, sesion, esProfes
             />
           </div>
           <p className="nota">
-            Ventana de {ayuno.eatingWindowHours} h · ayuno de {24 - ayuno.eatingWindowHours} h.
+            Comés de <b>{ayuno.eatingWindowStart}</b> a{' '}
+            <b>{cierreDe(ayuno.eatingWindowStart, ayuno.eatingWindowHours)}</b>, y ayunás{' '}
+            {24 - ayuno.eatingWindowHours} h.
           </p>
+
+          {ajuste.tipo !== 'ok' && (
+            <div className="arreglo">
+              <p>
+                {ajuste.tipo === 'mover'
+                  ? 'Con estos horarios, alguna comida cae fuera de la ventana.'
+                  : 'Con estos horarios, tus comidas no entran en la ventana.'}
+              </p>
+              <button className="boton boton-lleno boton-ancho"
+                      onClick={() => onConfig(aplicarAjuste(config, ajuste))}>
+                {ajuste.descripcion}
+              </button>
+            </div>
+          )}
         </section>
       )}
 

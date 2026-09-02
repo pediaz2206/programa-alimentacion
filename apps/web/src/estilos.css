@@ -401,3 +401,54 @@ h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0;
   font-size: 12px; letter-spacing: .09em; text-transform: uppercase;
   color: var(--tenue); font-weight: 600; margin: 6px 0 -6px 2px;
 }
+
+/* --------------------------------------------------------- ventana ------ */
+.ventana { display: flex; flex-direction: column; gap: 6px; }
+.ventana-fila { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.ventana-estado { font-size: 13.5px; font-weight: 600; color: var(--indigo); }
+.ventana-estado.abierta { color: var(--verde); }
+.ventana-detalle { font-size: 12.5px; color: var(--tenue); }
+.ventana-barra {
+  height: 4px; border-radius: 2px; background: var(--superficie-2); overflow: hidden;
+}
+.ventana-barra i { display: block; height: 100%; border-radius: 2px; transition: width .4s ease; }
+
+/* ---------------------------------------------------------- agenda ------ */
+.agenda {
+  background: var(--superficie); border: 1px solid var(--linea);
+  border-radius: var(--r); box-shadow: var(--sombra);
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+}
+.agenda-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.agenda-fila {
+  display: grid; grid-template-columns: 44px 9px 1fr; gap: 10px; align-items: center;
+  padding: 7px 0; border-bottom: 1px solid var(--linea);
+}
+.agenda-fila:last-child { border-bottom: 0; }
+.agenda-fila.pasado { opacity: .45; }
+.agenda-fila.actual .agenda-que { font-weight: 600; }
+.agenda-hora { font-size: 12.5px; color: var(--tenue); }
+.agenda-punto { width: 7px; height: 7px; border-radius: 50%; background: var(--linea); }
+.agenda-punto.comida { background: var(--verde); }
+.agenda-punto.preparar { background: var(--verde-suave); border: 1.5px solid var(--verde); }
+.agenda-punto.ayuno { background: var(--indigo); }
+.agenda-punto.libre { background: var(--ambar); }
+.agenda-que { font-size: 13.5px; line-height: 1.35; }
+.agenda-mas {
+  align-self: flex-start; background: none; border: 0; padding: 2px 0; cursor: pointer;
+  font: inherit; font-size: 12.5px; font-weight: 600; color: var(--verde);
+}
+
+button.ventana {
+  border: 0; background: none; padding: 0; cursor: pointer;
+  font: inherit; color: inherit; text-align: left; width: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+button.ventana:focus-visible { outline: 2px solid var(--verde); outline-offset: 3px; border-radius: 6px; }
+
+/* Un aviso que trae el arreglo, no uno que solo señala el problema. */
+.arreglo {
+  background: var(--ambar-suave); border-radius: var(--r);
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 11px;
+}
+.arreglo p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--ambar); }
