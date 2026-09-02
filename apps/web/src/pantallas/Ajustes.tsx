@@ -3,6 +3,7 @@ import type { NutritionPlan, UserConfig } from '@pa/core';
 import { entrarConGoogle, hayBackend, salir } from '../lib/supabase.ts';
 import { nombresSlot } from '../lib/datos.ts';
 import { Notificaciones } from '../componentes/Notificaciones.tsx';
+import { Vinculos } from '../componentes/Vinculo.tsx';
 
 interface Props {
   plan: NutritionPlan;
@@ -11,9 +12,11 @@ interface Props {
   tema: 'claro' | 'oscuro';
   onTema: (t: 'claro' | 'oscuro') => void;
   sesion: Session | null;
+  esProfesional: boolean;
+  onEsProfesional: (v: boolean) => void;
 }
 
-export function Ajustes({ plan, config, onConfig, tema, onTema, sesion }: Props) {
+export function Ajustes({ plan, config, onConfig, tema, onTema, sesion, esProfesional, onEsProfesional }: Props) {
   const NOMBRE_SLOT = nombresSlot(plan);
   function cambiarHora(slotId: string, time: string) {
     onConfig({
@@ -87,6 +90,8 @@ export function Ajustes({ plan, config, onConfig, tema, onTema, sesion }: Props)
       )}
 
       <Notificaciones sesion={sesion} />
+
+      <Vinculos sesion={sesion} esProfesional={esProfesional} onEsProfesional={onEsProfesional} />
 
       <section className="tarjeta">
         <h3 className="encabezado-seccion" style={{ margin: 0 }}>Apariencia</h3>

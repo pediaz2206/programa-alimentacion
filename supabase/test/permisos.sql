@@ -3,10 +3,10 @@
 \set ON_ERROR_STOP on
 \pset tuples_only on
 
-insert into auth.users (id) values
-  ('11111111-1111-1111-1111-111111111111'),  -- paciente
-  ('22222222-2222-2222-2222-222222222222'),  -- nutricionista
-  ('33333333-3333-3333-3333-333333333333');  -- tercero sin vinculo
+insert into auth.users (id, email) values
+  ('11111111-1111-1111-1111-111111111111', 'paciente@ejemplo.com'),
+  ('22222222-2222-2222-2222-222222222222', 'nutri@ejemplo.com'),
+  ('33333333-3333-3333-3333-333333333333', 'ajeno@ejemplo.com');
 
 insert into public.profiles (id, display_name, is_professional) values
   ('11111111-1111-1111-1111-111111111111', 'Paciente', false),
@@ -44,9 +44,9 @@ select pruebas.check('sin vinculo no hay acceso',
   public.has_care_access('11111111-1111-1111-1111-111111111111'), false);
 
 -- 2. Vinculo invitado pero no aceptado: sigue sin ver.
-insert into public.care_relationships (professional_id, patient_id, status)
+insert into public.care_relationships (professional_id, patient_id, patient_email, status)
 values ('22222222-2222-2222-2222-222222222222',
-        '11111111-1111-1111-1111-111111111111', 'pending');
+        '11111111-1111-1111-1111-111111111111', 'paciente@ejemplo.com', 'pending');
 select pruebas.check('vinculo pendiente no alcanza',
   public.has_care_access('11111111-1111-1111-1111-111111111111'), false);
 
@@ -111,3 +111,23 @@ select pruebas.check('el paciente ve su registro',
   exists (select 1 from public.meal_logs where patient_id = '11111111-1111-1111-1111-111111111111'), true);
 select pruebas.check('el paciente ve sus fotos',
   exists (select 1 from storage.objects where bucket_id = 'meal-photos'), true);
+
+-- 9. Invitar por email a alguien que todavia no reclamo la invitacion.
+set role authenticated;
+select set_config('test.uid', '33333333-3333-3333-3333-333333333333', false);
+insert into public.care_relationships (professional_id, patient_email, status)
+values ('33333333-3333-3333-3333-333333333333', 'PACIENTE@ejemplo.com', 'pending');
+
+select pruebas.check('una invitacion sin reclamar no concede acceso',
+  public.has_care_access('11111111-1111-1111-1111-111111111111'), false);
+
+select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
+select pruebas.check('el paciente reclama la invitacion por email, sin importar mayusculas',
+  public.reclamar_invitaciones() = 1, true);
+select pruebas.check('reclamar no concede acceso por si solo',
+  (select status from public.care_relationships
+   where professional_id = '33333333-3333-3333-3333-333333333333') = 'pending', true);
+
+select set_config('test.uid', '33333333-3333-3333-3333-333333333333', false);
+select pruebas.check('reclamada pero sin aceptar, sigue sin ver nada',
+  public.has_care_access('11111111-1111-1111-1111-111111111111'), false);

@@ -27,7 +27,12 @@ create table if not exists public.profiles (
 create table if not exists public.care_relationships (
   id                 uuid primary key default gen_random_uuid(),
   professional_id    uuid not null references auth.users (id) on delete cascade,
-  patient_id         uuid not null references auth.users (id) on delete cascade,
+  -- Nulo mientras la invitacion no fue reclamada. Se invita por email y no
+  -- resolviendo el email a un id: una consulta que responde "ese email
+  -- existe" convierte a la app en un enumerador de usuarios, y ademas
+  -- permite invitar a alguien que todavia no se registro.
+  patient_id         uuid references auth.users (id) on delete cascade,
+  patient_email      text not null,
   -- 'pending': invitada pero sin aceptar. 'active': vigente. 'revoked': cortada.
   status             text not null default 'pending'
                      check (status in ('pending', 'active', 'revoked')),
@@ -40,9 +45,14 @@ create table if not exists public.care_relationships (
   -- hay acceso, aunque el vinculo figure activo.
   consent_granted_at timestamptz,
   consent_version    text,
-  unique (professional_id, patient_id),
-  constraint vinculo_no_es_uno_mismo check (professional_id <> patient_id)
+  constraint vinculo_no_es_uno_mismo check (professional_id is distinct from patient_id)
 );
+
+-- Una invitacion por profesional y paciente, se haya reclamado o no.
+create unique index if not exists care_rel_unico_email
+  on public.care_relationships (professional_id, lower(patient_email));
+create unique index if not exists care_rel_unico_paciente
+  on public.care_relationships (professional_id, patient_id) where patient_id is not null;
 
 create index if not exists care_rel_pro_idx on public.care_relationships (professional_id)
   where status = 'active';
@@ -75,6 +85,43 @@ $$;
 
 revoke all on function public.has_care_access(uuid) from public;
 grant execute on function public.has_care_access(uuid) to authenticated;
+
+/**
+ * Reclama las invitaciones dirigidas al email de quien llama.
+ *
+ * La invitacion se crea sin patient_id porque la profesional solo conoce el
+ * email. Esta funcion la ata a la cuenta real, y solo puede atarla a la de
+ * quien ejecuta: el id sale de auth.uid(), nunca de un parametro.
+ *
+ * Reclamar NO concede acceso: la deja visible para que el paciente decida.
+ * Aceptar y consentir siguen siendo actos suyos.
+ */
+create or replace function public.reclamar_invitaciones()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  atadas integer;
+begin
+  if auth.uid() is null then return 0; end if;
+
+  update public.care_relationships r
+  set patient_id = auth.uid()
+  where r.patient_id is null
+    and lower(r.patient_email) = lower(auth.email())
+    and not exists (
+      select 1 from public.care_relationships otro
+      where otro.professional_id = r.professional_id and otro.patient_id = auth.uid()
+    );
+
+  get diagnostics atadas = row_count;
+  return atadas;
+end $$;
+
+revoke all on function public.reclamar_invitaciones() from public;
+grant execute on function public.reclamar_invitaciones() to authenticated;
 
 -- ----------------------------------------------------------------- planes --
 
@@ -203,9 +250,13 @@ drop policy if exists care_rel_visible on public.care_relationships;
 create policy care_rel_visible on public.care_relationships
   for select using (patient_id = auth.uid() or professional_id = auth.uid());
 
+-- Solo se invita en nombre propio, y solo quien se declaro profesional.
 drop policy if exists care_rel_invite on public.care_relationships;
 create policy care_rel_invite on public.care_relationships
-  for insert with check (professional_id = auth.uid() or patient_id = auth.uid());
+  for insert with check (
+    professional_id = auth.uid()
+    and exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_professional)
+  );
 
 drop policy if exists care_rel_update on public.care_relationships;
 create policy care_rel_update on public.care_relationships

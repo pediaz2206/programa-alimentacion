@@ -159,5 +159,8 @@ revocar oculte tambien las fotos, y que un profesional ajeno nunca vea nada.
 - [x] Persistencia en Supabase con siembra en el primer ingreso
 - [x] Netlify Function de push + registro de suscripciones
 - [x] Google SSO
-- [ ] Pantalla de la nutricionista (ver el registro, publicar versiones del plan)
+- [x] Pantalla de la nutricionista (seguimiento y publicar versiones del plan)
+- [x] Invitacion por email, consentimiento y revocacion
+- [x] Funcionamiento sin conexion con cola de escrituras
+- [ ] Editor completo del plan (hoy solo se ajustan objetivo proteico y comidas del 20%)
 - [ ] Modelo de dos roles (paciente / nutricionista) - ver seccion anterior

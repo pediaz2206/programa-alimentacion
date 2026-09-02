@@ -6,12 +6,15 @@ create extension if not exists pgcrypto;
 create role authenticated;
 create role anon;
 
-create table auth.users (id uuid primary key);
+create table auth.users (id uuid primary key, email text);
 
 -- En Supabase auth.uid() sale del JWT. Aca sale de una variable de sesion,
 -- para poder actuar como distintos usuarios dentro de la misma prueba.
 create function auth.uid() returns uuid language sql stable as
 $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
+
+create function auth.email() returns text language sql stable as
+$$ select u.email from auth.users u where u.id = auth.uid() $$;
 
 create table storage.buckets (id text primary key, name text, public boolean);
 create table storage.objects (
