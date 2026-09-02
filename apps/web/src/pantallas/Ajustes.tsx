@@ -4,6 +4,7 @@ import { entrarConGoogle, hayBackend, salir } from '../lib/supabase.ts';
 import { nombresSlot } from '../lib/datos.ts';
 import { Notificaciones } from '../componentes/Notificaciones.tsx';
 import { Vinculos } from '../componentes/Vinculo.tsx';
+import { Encabezado } from '../componentes/Encabezado.tsx';
 
 interface Props {
   plan: NutritionPlan;
@@ -29,10 +30,7 @@ export function Ajustes({ plan, config, onConfig, tema, onTema, sesion, esProfes
 
   return (
     <>
-      <header>
-        <div className="encabezado-seccion">En Punto</div>
-        <h1 className="titulo-pantalla">Ajustes</h1>
-      </header>
+      <Encabezado eyebrow="En Punto" titulo="Ajustes" />
 
       <section className="tarjeta">
         <h3 className="encabezado-seccion" style={{ margin: 0 }}>Horarios</h3>

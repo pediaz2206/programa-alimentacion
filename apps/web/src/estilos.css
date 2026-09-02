@@ -49,7 +49,13 @@
 }
 
 * { box-sizing: border-box; }
-html, body, #root { height: 100%; }
+html, body, #root { min-height: 100%; }
+body {
+  /* El rebote de iOS deja ver el fondo detrás de la app y hace que la barra
+     fija tiemble mientras el navegador colapsa su propia barra. */
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
 body {
   margin: 0;
   background: var(--papel);
@@ -62,20 +68,24 @@ body {
 h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0; text-wrap: balance; }
 .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 
-.app { display: flex; flex-direction: column; min-height: 100%; }
+.app {
+  display: flex; flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;   /* respeta la barra del navegador cuando se colapsa */
+}
 .contenido {
   flex: 1;
   max-width: 460px;
   width: 100%;
   margin: 0 auto;
-  padding: 18px 16px calc(var(--barra-alto) + env(safe-area-inset-bottom) + 24px);
+  padding: calc(18px + env(safe-area-inset-top)) 16px
+           calc(var(--barra-alto) + env(safe-area-inset-bottom) + 24px);
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
 /* ------------------------------------------------------ navegacion ------ */
-.barra.barra-5 { grid-template-columns: repeat(5, 1fr); }
 .barra {
   position: fixed;
   left: 0; right: 0; bottom: 0;
@@ -83,8 +93,7 @@ h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0;
   padding-bottom: env(safe-area-inset-bottom);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  background: color-mix(in srgb, var(--superficie) 92%, transparent);
-  backdrop-filter: blur(12px);
+  background: var(--superficie);
   border-top: 1px solid var(--linea);
   z-index: 10;
 }
@@ -92,10 +101,16 @@ h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0;
   border: 0; background: none; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   font: inherit; font-size: 11px; font-weight: 600;
-  color: var(--tenue); padding: 0;
+  color: var(--tenue); padding: 0 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 .barra button svg { width: 21px; height: 21px; }
 .barra button[aria-current="page"] { color: var(--verde); }
+.barra.barra-5 { grid-template-columns: repeat(5, 1fr); }
+.barra.barra-5 button { font-size: 10px; }
+.barra.barra-5 button svg { width: 19px; height: 19px; }
 .barra button:focus-visible { outline: 2px solid var(--verde); outline-offset: -3px; }
 
 /* ---------------------------------------------------------- tarjetas ---- */
@@ -299,7 +314,9 @@ h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0;
 .bienvenida {
   min-height: 100%;
   display: flex; align-items: center; justify-content: center;
-  padding: 32px 20px calc(32px + env(safe-area-inset-bottom));
+  /* Centrada se ve bien en un teléfono; en una pantalla alta flota, así que
+     a partir de cierto alto se ancla arriba. */
+  padding: calc(32px + env(safe-area-inset-top)) 20px calc(32px + env(safe-area-inset-bottom));
 }
 .bienvenida-marco {
   max-width: 400px; width: 100%;
@@ -368,4 +385,19 @@ h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0;
 .cifra-grande {
   font-family: "Bricolage Grotesque", Archivo, sans-serif;
   font-size: 30px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1;
+}
+
+@media (min-height: 900px) {
+  .bienvenida { align-items: flex-start; padding-top: calc(72px + env(safe-area-inset-top)); }
+}
+
+/* Encabezado común a todas las pantallas: mismo lugar, mismo tamaño, mismo
+   ritmo. Antes cada una lo armaba por su cuenta y saltaban entre pestañas. */
+.encabezado {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+.encabezado-textos { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rotulo {
+  font-size: 12px; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--tenue); font-weight: 600; margin: 6px 0 -6px 2px;
 }

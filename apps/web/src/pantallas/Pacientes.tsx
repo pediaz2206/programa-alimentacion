@@ -7,6 +7,7 @@ import {
 import { invitarPaciente } from '../lib/vinculos.ts';
 import { Seccion } from '../componentes/Seccion.tsx';
 import { Aviso } from '../componentes/Aviso.tsx';
+import { Encabezado } from '../componentes/Encabezado.tsx';
 
 export function Pacientes({ sesion }: { sesion: Session | null }) {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
@@ -33,10 +34,7 @@ export function Pacientes({ sesion }: { sesion: Session | null }) {
 
   return (
     <>
-      <header>
-        <div className="encabezado-seccion">Seguimiento</div>
-        <h1 className="titulo-pantalla">Pacientes</h1>
-      </header>
+      <Encabezado eyebrow="Seguimiento" titulo="Pacientes" />
 
       {error && <Aviso texto={error} />}
 
@@ -99,10 +97,7 @@ function Detalle({ paciente, sesion, onVolver }: {
         Pacientes
       </button>
 
-      <header>
-        <div className="encabezado-seccion">{paciente.email}</div>
-        <h1 className="titulo-pantalla">{paciente.nombre}</h1>
-      </header>
+      <Encabezado eyebrow={paciente.email} titulo={paciente.nombre} />
 
       {m ? <Panel metricas={m} /> : (
         <section className="tarjeta"><p className="vacio">Sin plan activo.</p></section>

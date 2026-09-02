@@ -3,6 +3,7 @@ import type { NutritionPlan, ScheduledEvent } from '@pa/core';
 import { balanceDe, nombresSlot, opcionPorId } from '../lib/datos.ts';
 import { fechaISO, opcionesDe, type Registro as Fila } from '../lib/registro.ts';
 import { achicar } from '../lib/imagen.ts';
+import { Encabezado } from '../componentes/Encabezado.tsx';
 
 interface Props {
   plan: NutritionPlan;
@@ -28,10 +29,7 @@ export function Registro({ plan, eventos, registros, onGuardar, onBorrar, guarda
 
   return (
     <>
-      <header>
-        <div className="encabezado-seccion">Lo que comiste</div>
-        <h1 className="titulo-pantalla">Registro</h1>
-      </header>
+      <Encabezado eyebrow="Lo que comiste" titulo="Registro" />
 
       {balance.protein && (
         <section className="tarjeta">

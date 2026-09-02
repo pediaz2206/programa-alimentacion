@@ -5,6 +5,7 @@ import {
 import { Dial } from '../componentes/Dial.tsx';
 import { Aviso } from '../componentes/Aviso.tsx';
 import { Seccion } from '../componentes/Seccion.tsx';
+import { Encabezado } from '../componentes/Encabezado.tsx';
 import { balanceDe } from '../lib/datos.ts';
 import { fechaISO, opcionesDe, type Registro } from '../lib/registro.ts';
 
@@ -28,15 +29,11 @@ export function Hoy({ plan, eventos, ahora, config, registros, onRegistrar, onIr
 
   return (
     <>
-      <header className="encabezado-hoy">
-        <div>
-          <div className="encabezado-seccion mono">
-            {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </div>
-          <h1 className="titulo-pantalla">Hoy</h1>
-        </div>
-        <EstadoVentana config={config} ahora={ahora} />
-      </header>
+      <Encabezado
+        eyebrow={new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+        titulo="Hoy"
+        extra={<EstadoVentana config={config} ahora={ahora} />}
+      />
 
       <Ahora momento={momento} eventos={eventos} ahora={ahora} onRegistrar={onRegistrar} />
 

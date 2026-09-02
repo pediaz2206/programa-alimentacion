@@ -2,6 +2,7 @@ import { describeFormula, type NutritionPlan, type UserConfig } from '@pa/core';
 import { comidasLibres, nombresSlot } from '../lib/datos.ts';
 import { Aviso } from '../componentes/Aviso.tsx';
 import { Seccion } from '../componentes/Seccion.tsx';
+import { Encabezado } from '../componentes/Encabezado.tsx';
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -20,10 +21,7 @@ export function Plan({ plan, config }: { plan: NutritionPlan; config: UserConfig
 
   return (
     <>
-      <header>
-        <div className="encabezado-seccion">{plan.name}</div>
-        <h1 className="titulo-pantalla">Tu plan</h1>
-      </header>
+      <Encabezado eyebrow={plan.name} titulo="Tu plan" />
 
       <Seccion
         titulo="Cómo se arma cada comida"
@@ -76,7 +74,9 @@ export function Plan({ plan, config }: { plan: NutritionPlan; config: UserConfig
       </Seccion>
 
       {/* Cada grupo se pliega por separado: nadie busca "hidratos" y "lácteos"
-          al mismo tiempo, y 27 equivalencias juntas son medio metro de scroll. */}
+          al mismo tiempo, y 27 equivalencias juntas son medio metro de scroll.
+          El rótulo evita que se lean como cinco secciones sueltas más. */}
+      <div className="rotulo">Equivalencias por grupo</div>
       {grupos.map((g) => (
         <Seccion
           key={g.id}
