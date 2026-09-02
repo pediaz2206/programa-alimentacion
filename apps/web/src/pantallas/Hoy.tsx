@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import {
   ajusteDeVentana, aplicarAjuste, estadoActual, humanizeMinutes,
-  type Momento, type NutritionPlan, type ScheduledEvent, type UserConfig,
+  type Desvio as DatosDesvio, type Ingredient, type Momento,
+  type NutritionPlan, type ScheduledEvent, type UserConfig,
 } from '@pa/core';
 import { Franja } from '../componentes/Franja.tsx';
+import { Desvio } from '../componentes/Desvio.tsx';
+import { Reemplazos } from '../componentes/Reemplazos.tsx';
 import { Aviso } from '../componentes/Aviso.tsx';
 import { Encabezado } from '../componentes/Encabezado.tsx';
 import { balanceDe } from '../lib/datos.ts';
@@ -16,12 +19,13 @@ interface Props {
   config: UserConfig;
   registros: Registro[];
   onRegistrar: (evento: ScheduledEvent) => void;
+  onRegistrarDesvio: (evento: ScheduledEvent, proteina: number, resumen: string) => void;
   onIrARegistro: () => void;
   onIrAAjustes: () => void;
   onConfig: (c: UserConfig) => void;
 }
 
-export function Hoy({ plan, eventos, ahora, config, registros, onRegistrar, onIrARegistro, onIrAAjustes, onConfig }: Props) {
+export function Hoy({ plan, eventos, ahora, config, registros, onRegistrar, onRegistrarDesvio, onIrARegistro, onIrAAjustes, onConfig }: Props) {
   const hoy = fechaISO();
   const deHoy = registros.filter((r) => r.fecha === hoy);
   const slotsRegistrados = deHoy.map((r) => r.slotId);
@@ -60,7 +64,14 @@ export function Hoy({ plan, eventos, ahora, config, registros, onRegistrar, onIr
         </section>
       )}
 
-      <Ahora momento={momento} eventos={eventos} ahora={ahora} onRegistrar={onRegistrar} />
+      <Ahora
+        plan={plan}
+        momento={momento}
+        eventos={eventos}
+        ahora={ahora}
+        onRegistrar={onRegistrar}
+        onRegistrarDesvio={onRegistrarDesvio}
+      />
 
       <div className="tira">
         <div className="tira-datos">
@@ -109,14 +120,18 @@ const TITULO: Record<string, string> = {
 };
 
 interface AhoraProps {
+  plan: NutritionPlan;
   momento: Momento;
   eventos: ScheduledEvent[];
   ahora: number;
   onRegistrar: (e: ScheduledEvent) => void;
+  onRegistrarDesvio: (e: ScheduledEvent, proteina: number, resumen: string) => void;
 }
 
-function Ahora({ momento, eventos, ahora, onRegistrar }: AhoraProps) {
+function Ahora({ plan, momento, eventos, ahora, onRegistrar, onRegistrarDesvio }: AhoraProps) {
   const { tipo, evento, faltan } = momento;
+  const [desviando, setDesviando] = useState(false);
+  const [sinIngrediente, setSinIngrediente] = useState<number | null>(null);
 
   if (tipo === 'fin-del-dia' || !evento) {
     return (
@@ -166,10 +181,27 @@ function Ahora({ momento, eventos, ahora, onRegistrar }: AhoraProps) {
 
       {tipo === 'preparar' && evento.checklist && evento.checklist.length > 0 && (
         <ul className="lista">
-          {evento.checklist.map((i, n) => (
-            <li key={n} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13.5, padding: '4px 0' }}>
-              <span>{i.item}</span>
-              <span className="cant mono">{i.qty != null ? `${i.qty} ${i.unit ?? ''}`.trim() : ''}</span>
+          {evento.checklist.map((i: Ingredient, n: number) => (
+            <li key={n}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, padding: '4px 0' }}>
+                <span style={{ flex: 1 }}>{i.item}</span>
+                <span className="cant mono">{i.qty != null ? `${i.qty} ${i.unit ?? ''}`.trim() : ''}</span>
+                <button
+                  type="button"
+                  className="item-accion"
+                  onClick={() => setSinIngrediente(sinIngrediente === n ? null : n)}
+                >
+                  {sinIngrediente === n ? 'cerrar' : 'no tengo'}
+                </button>
+              </div>
+              {sinIngrediente === n && (
+                <Reemplazos
+                  plan={plan}
+                  ingrediente={i}
+                  slotId={evento.slotId}
+                  onCerrar={() => setSinIngrediente(null)}
+                />
+              )}
             </li>
           ))}
         </ul>
@@ -188,15 +220,36 @@ function Ahora({ momento, eventos, ahora, onRegistrar }: AhoraProps) {
         </>
       )}
 
-      {tipo === 'comer-ahora' && (
-        <button className="boton boton-lleno boton-ancho" onClick={() => onRegistrar(evento)}>
-          Registrar {evento.freeMeal ? 'la comida del 20%' : `“${opciones[0]?.name ?? 'la comida'}”`}
-        </button>
+      {tipo === 'comer-ahora' && !desviando && (
+        <>
+          <button className="boton boton-lleno boton-ancho" onClick={() => onRegistrar(evento)}>
+            Registrar {evento.freeMeal ? 'la comida del 20%' : `“${opciones[0]?.name ?? 'la comida'}”`}
+          </button>
+          <button className="boton boton-ancho" onClick={() => setDesviando(true)}>
+            Comí otra cosa
+          </button>
+        </>
+      )}
+
+      {desviando && slotDe(plan, evento) && (
+        <Desvio
+          plan={plan}
+          slot={slotDe(plan, evento)!}
+          onCancelar={() => setDesviando(false)}
+          onGuardar={(_datos: DatosDesvio, proteina: number, resumen: string) => {
+            setDesviando(false);
+            onRegistrarDesvio(evento, proteina, resumen);
+          }}
+        />
       )}
 
       {evento.warnings?.map((w, n) => <Aviso key={n} texto={w} />)}
     </section>
   );
+}
+
+function slotDe(plan: NutritionPlan, evento: ScheduledEvent) {
+  return plan.slots.find((s) => s.id === evento.slotId);
 }
 
 function tituloDe(evento: ScheduledEvent, _tipo: string): string {

@@ -25,7 +25,45 @@
         "queso port salut",
         "yogur griego"
       ],
-      "notes": "Presente en todas las comidas principales."
+      "notes": "Presente en todas las comidas principales.",
+      "exchanges": [
+        {
+          "label": "Pechuga de pollo",
+          "qty": 150,
+          "unit": "g",
+          "proteinGrams": 30
+        },
+        {
+          "label": "Carne magra",
+          "qty": 150,
+          "unit": "g",
+          "proteinGrams": 33
+        },
+        {
+          "label": "Pescado",
+          "qty": 180,
+          "unit": "g",
+          "proteinGrams": 36
+        },
+        {
+          "label": "Huevo",
+          "qty": 3,
+          "unit": "unidades",
+          "proteinGrams": 20
+        },
+        {
+          "label": "Lentejas",
+          "qty": 100,
+          "unit": "g en crudo",
+          "proteinGrams": 24
+        },
+        {
+          "label": "Queso port salut",
+          "qty": 80,
+          "unit": "g",
+          "proteinGrams": 20
+        }
+      ]
     },
     {
       "id": "carbohidratos",
@@ -44,7 +82,34 @@
         "avena",
         "legumbres"
       ],
-      "notes": "Preferir versión integral cuando exista."
+      "notes": "Preferir versión integral cuando exista.",
+      "exchanges": [
+        {
+          "label": "Arroz integral",
+          "qty": 60,
+          "unit": "g en crudo"
+        },
+        {
+          "label": "Papa",
+          "qty": 200,
+          "unit": "g"
+        },
+        {
+          "label": "Fideos integrales",
+          "qty": 60,
+          "unit": "g en crudo"
+        },
+        {
+          "label": "Pan integral",
+          "qty": 2,
+          "unit": "rebanadas"
+        },
+        {
+          "label": "Avena",
+          "qty": 40,
+          "unit": "g"
+        }
+      ]
     },
     {
       "id": "vegetales",
@@ -62,7 +127,20 @@
         "cebolla",
         "espinaca"
       ],
-      "notes": "Mitad del plato en almuerzo y cena. Sin límite de cantidad."
+      "notes": "Mitad del plato en almuerzo y cena. Sin límite de cantidad.",
+      "exchanges": [
+        {
+          "label": "Vegetales crudos",
+          "qty": 150,
+          "unit": "g",
+          "note": "media ensalada"
+        },
+        {
+          "label": "Vegetales cocidos",
+          "qty": 200,
+          "unit": "g"
+        }
+      ]
     },
     {
       "id": "frutas",
@@ -74,6 +152,13 @@
         "frutillas",
         "pera",
         "kiwi"
+      ],
+      "exchanges": [
+        {
+          "label": "Fruta mediana",
+          "qty": 1,
+          "unit": "unidad"
+        }
       ]
     },
     {
@@ -85,7 +170,25 @@
         "frutos secos",
         "semillas"
       ],
-      "notes": "Porciones chicas: 1 cda de aceite, 1 puñado de frutos secos."
+      "notes": "Porciones chicas: 1 cda de aceite, 1 puñado de frutos secos.",
+      "exchanges": [
+        {
+          "label": "Frutos secos",
+          "qty": 25,
+          "unit": "g",
+          "note": "1 puñado"
+        },
+        {
+          "label": "Palta",
+          "qty": 0.25,
+          "unit": "unidad"
+        },
+        {
+          "label": "Aceite de oliva",
+          "qty": 1,
+          "unit": "cda"
+        }
+      ]
     },
     {
       "id": "lacteos",
@@ -94,6 +197,20 @@
         "yogur natural",
         "leche",
         "queso untable descremado"
+      ],
+      "exchanges": [
+        {
+          "label": "Yogur natural",
+          "qty": 200,
+          "unit": "g",
+          "proteinGrams": 8
+        },
+        {
+          "label": "Leche descremada",
+          "qty": 250,
+          "unit": "ml",
+          "proteinGrams": 8
+        }
       ]
     }
   ],

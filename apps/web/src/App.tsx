@@ -204,6 +204,16 @@ export function App() {
             config={datos.config}
             registros={registros}
             onRegistrar={(e) => void alGuardar(desdeEvento(e))}
+            onRegistrarDesvio={(e, proteina, resumen) => void alGuardar({
+              fecha: fechaISO(),
+              slotId: e.slotId!,
+              // Sin optionId: no fue ninguna de las opciones del plan, y decir
+              // que sí lo fue ensuciaría el historial que lee la nutricionista.
+              optionId: null,
+              proteinGrams: proteina,
+              esLibre: false,
+              nota: resumen,
+            })}
             onIrARegistro={() => irA('registro')}
             onIrAAjustes={() => irA('ajustes')}
             onConfig={guardarConfigLocal}

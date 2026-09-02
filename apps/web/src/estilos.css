@@ -535,3 +535,40 @@ button.ventana:focus-visible { outline: 2px solid var(--verde); outline-offset: 
   -webkit-tap-highlight-color: transparent;
 }
 .franja-boton:focus-visible { outline: 2px solid var(--verde); outline-offset: 4px; border-radius: 8px; }
+
+/* ---------------------------------------------------- desvío / cambio --- */
+.desvio-grupo { display: flex; flex-direction: column; gap: 7px; }
+.desvio-titulo {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12px; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--tenue); font-weight: 600;
+}
+.desvio-opciones { display: flex; flex-wrap: wrap; gap: 6px; }
+.desvio-chip {
+  font: inherit; font-size: 12.5px; cursor: pointer;
+  padding: 6px 11px; border-radius: 9px;
+  border: 1px solid var(--linea); background: var(--superficie); color: var(--tenue);
+  -webkit-tap-highlight-color: transparent;
+}
+.desvio-chip.elegido {
+  border-color: var(--verde); background: var(--verde-suave);
+  color: var(--verde); font-weight: 600;
+}
+.desvio-chip:focus-visible { outline: 2px solid var(--verde); outline-offset: 1px; }
+.desvio-resumen {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  font-size: 13px; line-height: 1.45; color: var(--tenue);
+  border-top: 1px solid var(--linea); padding-top: 11px;
+}
+.desvio-resumen b { color: var(--g-proteinas); white-space: nowrap; }
+
+.reemplazos {
+  background: var(--superficie-2); border-radius: 10px;
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 9px;
+  margin: 4px 0 8px;
+}
+.item-accion {
+  background: none; border: 0; padding: 4px 6px; cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 600; color: var(--verde);
+  -webkit-tap-highlight-color: transparent;
+}
