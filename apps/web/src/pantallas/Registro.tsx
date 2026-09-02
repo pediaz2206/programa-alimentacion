@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { NutritionPlan, ScheduledEvent } from '@pa/core';
 import { balanceDe, nombresSlot, opcionPorId } from '../lib/datos.ts';
 import { fechaISO, opcionesDe, type Registro as Fila } from '../lib/registro.ts';
+import { achicar } from '../lib/imagen.ts';
 
 interface Props {
   plan: NutritionPlan;
@@ -142,9 +143,9 @@ function Formulario({ plan, evento, guardando, onGuardar, onCancelar }: {
   const elegida = opcionPorId(plan, optionId);
 
   function leerFoto(archivo: File) {
-    const lector = new FileReader();
-    lector.onload = () => setFoto(String(lector.result));
-    lector.readAsDataURL(archivo);
+    // Se achica antes de tocar disco: una foto de teléfono son 3 o 4 MB y no
+    // entra en la cuota de localStorage si hay que encolarla sin conexión.
+    achicar(archivo).then(setFoto).catch(() => setFoto(undefined));
   }
 
   return (

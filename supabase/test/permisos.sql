@@ -91,7 +91,21 @@ select pruebas.check('un profesional ajeno no ve el registro',
 select pruebas.check('un profesional ajeno no ve las fotos',
   exists (select 1 from storage.objects where bucket_id = 'meal-photos'), false);
 
--- 7. El paciente siempre ve lo suyo.
+-- 7. Las vistas de metricas respetan el mismo vinculo que las tablas.
+--    Una vista sin security_invoker saltearia RLS y filtraria todo.
+select pruebas.check('un profesional ajeno no ve el resumen diario',
+  exists (select 1 from public.resumen_diario where patient_id = '11111111-1111-1111-1111-111111111111'), false);
+select pruebas.check('un profesional ajeno no ve el resumen semanal',
+  exists (select 1 from public.resumen_semanal where patient_id = '11111111-1111-1111-1111-111111111111'), false);
+
+select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+select pruebas.check('la nutricionista vinculada si ve el resumen diario',
+  exists (select 1 from public.resumen_diario where patient_id = '11111111-1111-1111-1111-111111111111'), true);
+select pruebas.check('el resumen diario suma la proteina del dia',
+  (select proteina_g from public.resumen_diario
+   where patient_id = '11111111-1111-1111-1111-111111111111') = 40, true);
+
+-- 8. El paciente siempre ve lo suyo.
 select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
 select pruebas.check('el paciente ve su registro',
   exists (select 1 from public.meal_logs where patient_id = '11111111-1111-1111-1111-111111111111'), true);

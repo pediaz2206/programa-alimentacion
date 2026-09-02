@@ -4,7 +4,8 @@ import type { ScheduledEvent } from '@pa/core';
 import { agendaDe, minutosAhora } from './lib/datos.ts';
 import { configEmpaquetada, planEmpaquetado } from './lib/semilla.ts';
 import {
-  borrarRegistro, cargarDatos, guardarConfig, guardarRegistro, listarRegistros, type Datos,
+  borrarRegistro, cargarDatos, guardarConfig, guardarRegistro, listarRegistros,
+  pendientes as contarPendientes, sincronizar, type Datos,
 } from './lib/repositorio.ts';
 import { fechaISO, type Registro as Fila } from './lib/registro.ts';
 import { supabase } from './lib/supabase.ts';
@@ -36,8 +37,10 @@ export function App() {
   // parpadeo de la pantalla de login en cada carga.
   const [sesionResuelta, setSesionResuelta] = useState(!hayBackend);
   const [datos, setDatos] = useState<Datos>({
-    plan: planEmpaquetado, config: configEmpaquetada, planVersionId: null,
+    plan: planEmpaquetado, config: configEmpaquetada, planVersionId: null, desdeCache: false,
   });
+  const [enLinea, setEnLinea] = useState(() => navigator.onLine);
+  const [sinEnviar, setSinEnviar] = useState(0);
   const [registros, setRegistros] = useState<Fila[]>([]);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +57,24 @@ export function App() {
     const id = setInterval(() => setAhora(minutosAhora()), 60_000);
     return () => clearInterval(id);
   }, []);
+
+  // Volver la conexión es la señal para vaciar la cola. Sin esto, lo que se
+  // registró sin señal se queda en el teléfono hasta el próximo guardado.
+  useEffect(() => {
+    const conectado = () => {
+      setEnLinea(true);
+      void sincronizar(sesion)
+        .then((rs) => { setRegistros(rs); setSinEnviar(contarPendientes(sesion)); })
+        .catch(() => { /* sigue en cola: se reintenta en el próximo evento */ });
+    };
+    const desconectado = () => setEnLinea(false);
+    window.addEventListener('online', conectado);
+    window.addEventListener('offline', desconectado);
+    return () => {
+      window.removeEventListener('online', conectado);
+      window.removeEventListener('offline', desconectado);
+    };
+  }, [sesion]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -78,6 +99,7 @@ export function App() {
         if (!vigente) return;
         setDatos(d);
         setRegistros(rs);
+        setSinEnviar(contarPendientes(sesion));
         setError(null);
       } catch (e) {
         if (vigente) setError(mensaje(e));
@@ -95,6 +117,7 @@ export function App() {
     setGuardando(true);
     try {
       setRegistros(await guardarRegistro(sesion, r, datos.planVersionId));
+      setSinEnviar(contarPendientes(sesion));
       setError(null);
     } catch (e) {
       setError(mensaje(e));
@@ -106,6 +129,7 @@ export function App() {
   async function alBorrar(fecha: string, slotId: string) {
     try {
       setRegistros(await borrarRegistro(sesion, fecha, slotId));
+      setSinEnviar(contarPendientes(sesion));
     } catch (e) {
       setError(mensaje(e));
     }
@@ -117,6 +141,8 @@ export function App() {
   return (
     <div className="app">
       <main className="contenido">
+        <EstadoConexion enLinea={enLinea} desdeCache={datos.desdeCache} sinEnviar={sinEnviar} />
+
         {error && (
           <div className="aviso">
             <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -174,6 +200,34 @@ export function App() {
           </button>
         ))}
       </nav>
+    </div>
+  );
+}
+
+/**
+ * Una sola línea que dice si lo que se está viendo es fresco y si quedó algo
+ * sin mandar. Registrar una comida y no saber si se guardó es peor que no
+ * poder registrarla.
+ */
+function EstadoConexion({ enLinea, desdeCache, sinEnviar }: {
+  enLinea: boolean; desdeCache: boolean; sinEnviar: number;
+}) {
+  if (enLinea && !desdeCache && sinEnviar === 0) return null;
+
+  const texto = sinEnviar > 0
+    ? `${sinEnviar} ${sinEnviar === 1 ? 'registro guardado' : 'registros guardados'} en el teléfono. Se ${sinEnviar === 1 ? 'envía' : 'envían'} al volver la conexión.`
+    : enLinea
+      ? 'No se pudo contactar al servidor. Estás viendo la última versión guardada.'
+      : 'Sin conexión. Estás viendo la última versión guardada y podés seguir registrando.';
+
+  return (
+    <div className="estado-conexion">
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M1.5 5.5a9 9 0 0113 0M4 8.3a5.5 5.5 0 018 0" fill="none" stroke="currentColor"
+              strokeWidth="1.5" strokeLinecap="round" />
+        <circle cx="8" cy="12" r="1.1" fill="currentColor" />
+      </svg>
+      <span>{texto}</span>
     </div>
   );
 }

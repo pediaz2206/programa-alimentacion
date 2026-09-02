@@ -279,6 +279,50 @@ drop policy if exists notif_log_own on public.notification_log;
 create policy notif_log_own on public.notification_log
   for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 
+-- ----------------------------------------------------------- consultas --
+
+-- El plan vive como JSONB, que en Postgres es consultable con operadores y no
+-- una caja negra. El indice GIN habilita buscar dentro del documento sin
+-- recorrer todas las versiones: por ejemplo, que planes incluyen determinado
+-- alimento, o cuales fijan un objetivo proteico.
+create index if not exists plan_versions_doc_idx on public.plan_versions using gin (doc);
+
+/**
+ * Vistas de lectura para las metricas.
+ *
+ * `security_invoker = true` NO es opcional: sin eso una vista se ejecuta con
+ * los permisos de quien la creo y saltea el RLS de las tablas de abajo, que es
+ * exactamente el agujero que este esquema existe para evitar.
+ */
+
+-- Un dia de una persona, resumido. Es la unidad que mira tanto quien come
+-- como su nutricionista.
+create or replace view public.resumen_diario
+with (security_invoker = true) as
+select
+  l.patient_id,
+  l.local_date,
+  count(*)                                          as comidas_registradas,
+  count(*) filter (where l.is_free_meal)            as comidas_libres,
+  coalesce(sum(l.protein_grams), 0)                 as proteina_g,
+  count(*) filter (where l.photo_path is not null)  as con_foto
+from public.meal_logs l
+group by l.patient_id, l.local_date;
+
+-- Las comidas del 20% se presupuestan por semana, asi que la pregunta
+-- "cuantas lleva" solo tiene sentido agrupada por semana.
+create or replace view public.resumen_semanal
+with (security_invoker = true) as
+select
+  l.patient_id,
+  date_trunc('week', l.local_date)::date            as semana,
+  count(*)                                          as comidas_registradas,
+  count(*) filter (where l.is_free_meal)            as comidas_libres,
+  round(avg(l.protein_grams) filter (where l.protein_grams is not null), 1) as proteina_promedio_g,
+  count(distinct l.local_date)                      as dias_con_registro
+from public.meal_logs l
+group by l.patient_id, date_trunc('week', l.local_date);
+
 -- ----------------------------------------------------------------- fotos --
 
 -- Bucket privado: las fotos se leen con URLs firmadas de corta duracion.
