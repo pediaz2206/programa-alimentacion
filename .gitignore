@@ -9,3 +9,6 @@ apps/vista/salida/
 apps/web/.env
 apps/web/dist/
 *.tsbuildinfo
+
+# Local Netlify folder
+.netlify
