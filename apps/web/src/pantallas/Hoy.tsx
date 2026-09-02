@@ -1,8 +1,12 @@
-import { humanizeMinutes, type NutritionPlan, type ScheduledEvent, type UserConfig } from '@pa/core';
+import {
+  estadoActual, formatTime, humanizeMinutes, parseTime,
+  type Momento, type NutritionPlan, type ScheduledEvent, type UserConfig,
+} from '@pa/core';
 import { Dial } from '../componentes/Dial.tsx';
 import { Aviso } from '../componentes/Aviso.tsx';
+import { Seccion } from '../componentes/Seccion.tsx';
 import { balanceDe } from '../lib/datos.ts';
-import { opcionesDe, type Registro } from '../lib/registro.ts';
+import { fechaISO, opcionesDe, type Registro } from '../lib/registro.ts';
 
 interface Props {
   plan: NutritionPlan;
@@ -10,118 +14,244 @@ interface Props {
   ahora: number;
   config: UserConfig;
   registros: Registro[];
+  onRegistrar: (evento: ScheduledEvent) => void;
   onIrARegistro: () => void;
 }
 
-const ETIQUETA: Record<string, string> = {
-  'prep-check': 'Ingredientes',
-  meal: 'Comida',
-  'fast-start': 'Ayuno',
-  'fast-end': 'Ventana',
-  'fast-closing': 'Ventana',
-};
-
-export function Hoy({ plan, eventos, ahora, config, registros, onIrARegistro }: Props) {
-  const proximo = eventos.find((e) => e.minutes > ahora);
-  const balance = balanceDe(plan, opcionesDe(plan, registros));
-  const hoy = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+export function Hoy({ plan, eventos, ahora, config, registros, onRegistrar, onIrARegistro }: Props) {
+  const hoy = fechaISO();
+  const deHoy = registros.filter((r) => r.fecha === hoy);
+  const slotsRegistrados = deHoy.map((r) => r.slotId);
+  const momento = estadoActual(eventos, ahora, slotsRegistrados);
+  const balance = balanceDe(plan, opcionesDe(plan, deHoy));
+  const comidas = eventos.filter((e) => e.kind === 'meal');
 
   return (
     <>
-      <header>
-        <div className="encabezado-seccion mono">{hoy}</div>
-        <h1 className="titulo-pantalla">Hoy</h1>
+      <header className="encabezado-hoy">
+        <div>
+          <div className="encabezado-seccion mono">
+            {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </div>
+          <h1 className="titulo-pantalla">Hoy</h1>
+        </div>
+        <EstadoVentana config={config} ahora={ahora} />
       </header>
 
-      <section className="tarjeta">
-        <Dial eventos={eventos} ahora={ahora} ayuno={config.fasting} />
-      </section>
+      <Ahora momento={momento} eventos={eventos} ahora={ahora} onRegistrar={onRegistrar} />
 
-      {proximo ? (
-        <section className="tarjeta destacada">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-            <div>
-              <span className="chip chip-verde">{ETIQUETA[proximo.kind] ?? 'Lo que sigue'}</span>
-              <h2 style={{ fontSize: 19, fontWeight: 600, marginTop: 8 }}>{proximo.title}</h2>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div className="mono" style={{ fontSize: 14, color: 'var(--tenue)' }}>{proximo.time}</div>
-              <div style={{ fontSize: 12.5, color: 'var(--verde)', fontWeight: 600 }}>
-                en {humanizeMinutes(proximo.minutes - ahora)}
+      <div className="tira">
+        <div className="tira-datos">
+          {balance.protein && (
+            <>
+              <div className="tira-fila">
+                <span className="tira-nombre">Proteína</span>
+                <span className="tira-cifra mono">
+                  {Math.round(balance.protein.consumed)} / {balance.protein.target} g
+                </span>
               </div>
-            </div>
-          </div>
-          <p className="nota">{proximo.body}</p>
-          {proximo.checklist && proximo.checklist.length > 0 && (
-            <ul className="lista">
-              {proximo.checklist.map((i, n) => (
-                <li key={n} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13.5, padding: '4px 0' }}>
-                  <span>{i.item}</span>
-                  <span className="cant mono">{i.qty != null ? `${i.qty} ${i.unit ?? ''}`.trim() : ''}</span>
-                </li>
-              ))}
-            </ul>
+              <div className="barra-progreso">
+                <i style={{
+                  width: `${Math.min(100, (balance.protein.consumed / balance.protein.target) * 100)}%`,
+                  background: 'var(--g-proteinas)',
+                }} />
+              </div>
+            </>
           )}
-          {proximo.warnings?.map((w, n) => <Aviso key={n} texto={w} />)}
-        </section>
-      ) : (
-        <section className="tarjeta">
-          <p className="vacio">El día terminó. Mañana la ventana abre a las {config.fasting?.eatingWindowStart ?? '—'}.</p>
-        </section>
-      )}
-
-      {balance.protein && (
-        <section className="tarjeta">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-            <h3 className="encabezado-seccion" style={{ margin: 0 }}>Proteína del día</h3>
-            <span className="mono" style={{ fontSize: 13, color: 'var(--tenue)' }}>
-              {Math.round(balance.protein.consumed)} / {balance.protein.target} g
+          <div className="tira-fila">
+            <span className="tira-cifra">
+              {deHoy.length} de {comidas.length} comidas registradas
             </span>
+            <button
+              className="tira-cifra"
+              onClick={onIrARegistro}
+              style={{ background: 'none', border: 0, padding: 0, color: 'var(--verde)', fontWeight: 600, cursor: 'pointer', font: 'inherit' }}
+            >
+              Ver registro
+            </button>
           </div>
-          <div className="barra-progreso">
-            <i style={{
-              width: `${Math.min(100, (balance.protein.consumed / balance.protein.target) * 100)}%`,
-              background: 'var(--g-proteinas)',
-            }} />
-          </div>
-          <button className="boton boton-ancho" onClick={onIrARegistro}>
-            {registros.length === 0 ? 'Registrar lo que comiste' : 'Ver el registro'}
-          </button>
-        </section>
-      )}
-
-      <section>
-        <h3 className="encabezado-seccion" style={{ marginBottom: 10 }}>La línea del día</h3>
-        <div className="riel">
-          {eventos.map((e, n) => {
-            const clases = ['fila'];
-            if (e.minutes <= ahora) clases.push('pasado');
-            if (e === proximo) clases.push('actual');
-            if (e.kind.startsWith('fast')) clases.push('ayuno');
-            if (e.freeMeal) clases.push('libre');
-            return (
-              <div className={clases.join(' ')} key={n}>
-                <div className="hora mono">{e.time}</div>
-                <div className="eje"><span className="marca" /></div>
-                <div className="cuerpo">
-                  <div className="que">
-                    {e.title}
-                    {e.freeMeal && <span className="sello">20%</span>}
-                  </div>
-                  {e.kind === 'meal' && e.suggestions && e.suggestions.length > 0 ? (
-                    <div className="opciones">
-                      {e.suggestions.map((o) => <span className="opcion" key={o.id}>{o.name}</span>)}
-                    </div>
-                  ) : (
-                    <div className="detalle">{e.body}</div>
-                  )}
-                  {e.warnings?.map((w, i) => <div style={{ marginTop: 7 }} key={i}><Aviso texto={w} /></div>)}
-                </div>
-              </div>
-            );
-          })}
         </div>
-      </section>
+      </div>
+
+      <Seccion
+        titulo="El resto del día"
+        resumen={resumenPendiente(eventos, ahora)}
+        abiertaPorDefecto
+      >
+        <LineaDelDia eventos={eventos} ahora={ahora} momento={momento} />
+      </Seccion>
+
+      {config.fasting?.enabled && (
+        <Seccion titulo="Ventana de alimentación" resumen={resumenVentana(config, ahora)}>
+          <Dial eventos={eventos} ahora={ahora} ayuno={config.fasting} />
+        </Seccion>
+      )}
     </>
   );
+}
+
+const TITULO: Record<string, string> = {
+  'comer-ahora': 'Es hora de comer',
+  preparar: 'Preparate',
+  proximo: 'Lo que sigue',
+  'fin-del-dia': 'Terminaste el día',
+};
+
+interface AhoraProps {
+  momento: Momento;
+  eventos: ScheduledEvent[];
+  ahora: number;
+  onRegistrar: (e: ScheduledEvent) => void;
+}
+
+function Ahora({ momento, eventos, ahora, onRegistrar }: AhoraProps) {
+  const { tipo, evento, faltan } = momento;
+
+  if (tipo === 'fin-del-dia' || !evento) {
+    return (
+      <section className="hero">
+        <h2>Terminaste el día</h2>
+        <p className="hero-detalle">Nos vemos mañana.</p>
+      </section>
+    );
+  }
+
+  const urgente = tipo === 'comer-ahora';
+  const opciones = evento.suggestions ?? [];
+
+  // Un aviso de ingredientes trae dos horas distintas: la del chequeo y la de
+  // la comida. Mostrar las dos sin decir cuál es cuál se lee como un error.
+  const comida = evento.kind === 'prep-check'
+    ? eventos.find((c) => c.kind === 'meal' && c.slotId === evento.slotId)
+    : undefined;
+  const titulo = comida ? sinHora(comida.title) : tituloDe(evento, tipo);
+  const hora = comida?.time ?? evento.time;
+  const cuenta = comida && tipo === 'proximo'
+    ? `chequeo en ${humanizeMinutes(evento.minutes - ahora)}`
+    : faltan != null && faltan > 0
+      ? `en ${humanizeMinutes(faltan)}`
+      : null;
+
+  return (
+    <section className={`hero ${urgente ? 'urgente' : ''}`}>
+      <div className="hero-tope">
+        <div>
+          <span className={`chip ${urgente ? 'chip-ambar' : 'chip-verde'}`}>{TITULO[tipo]}</span>
+          <h2 style={{ marginTop: 8 }}>{titulo}</h2>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div className="hero-hora mono">{hora}</div>
+          {cuenta && <div className="hero-cuando">{cuenta}</div>}
+        </div>
+      </div>
+
+      {comida && (
+        <p className="hero-detalle">
+          {tipo === 'preparar'
+            ? `Chequeá que tengas todo para "${opciones[0]?.name ?? 'la comida'}".`
+            : `Aviso de ingredientes a las ${evento.time}.`}
+        </p>
+      )}
+
+      {tipo === 'preparar' && evento.checklist && evento.checklist.length > 0 && (
+        <ul className="lista">
+          {evento.checklist.map((i, n) => (
+            <li key={n} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13.5, padding: '4px 0' }}>
+              <span>{i.item}</span>
+              <span className="cant mono">{i.qty != null ? `${i.qty} ${i.unit ?? ''}`.trim() : ''}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {evento.kind === 'meal' && (
+        <>
+          {evento.freeMeal
+            ? <p className="hero-detalle">Comida del 20%: libre. Controlá igual las porciones.</p>
+            : <p className="hero-detalle">{evento.body}</p>}
+          {opciones.length > 0 && (
+            <div className="opciones">
+              {opciones.map((o) => <span className="opcion" key={o.id}>{o.name}</span>)}
+            </div>
+          )}
+        </>
+      )}
+
+      {tipo === 'comer-ahora' && (
+        <button className="boton boton-lleno boton-ancho" onClick={() => onRegistrar(evento)}>
+          Registrar {evento.freeMeal ? 'la comida del 20%' : `“${opciones[0]?.name ?? 'la comida'}”`}
+        </button>
+      )}
+
+      {evento.warnings?.map((w, n) => <Aviso key={n} texto={w} />)}
+    </section>
+  );
+}
+
+function tituloDe(evento: ScheduledEvent, _tipo: string): string {
+  return sinHora(evento.title);
+}
+
+/** "Almuerzo - 13:30" -> "Almuerzo". La hora ya va al costado; repetirla es ruido. */
+function sinHora(titulo: string): string {
+  return titulo.replace(/\s*[-–]\s*\d{2}:\d{2}\s*$/, '');
+}
+
+function LineaDelDia({ eventos, ahora, momento }: { eventos: ScheduledEvent[]; ahora: number; momento: Momento }) {
+  return (
+    <div className="riel">
+      {eventos.map((e, n) => {
+        const clases = ['fila'];
+        if (e.minutes <= ahora) clases.push('pasado');
+        if (e === momento.evento) clases.push('actual');
+        if (e.kind.startsWith('fast')) clases.push('ayuno');
+        if (e.freeMeal) clases.push('libre');
+        return (
+          <div className={clases.join(' ')} key={n}>
+            <div className="hora mono">{e.time}</div>
+            <div className="eje"><span className="marca" /></div>
+            <div className="cuerpo">
+              <div className="que">
+                {e.title}
+                {e.freeMeal && <span className="sello">20%</span>}
+              </div>
+              <div className="detalle">{e.body}</div>
+              {e.warnings?.map((w, i) => (
+                <div style={{ marginTop: 7 }} key={i}><Aviso texto={w} /></div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function EstadoVentana({ config, ahora }: { config: UserConfig; ahora: number }) {
+  const ayuno = config.fasting;
+  if (!ayuno?.enabled) return null;
+  const inicio = parseTime(ayuno.eatingWindowStart);
+  const duracion = Math.round(ayuno.eatingWindowHours * 60);
+  const dentro = ((ahora - inicio) % 1440 + 1440) % 1440 < duracion;
+  return (
+    <span className={`chip ${dentro ? 'chip-verde' : 'chip-indigo'}`}>
+      {dentro ? 'Ventana abierta' : 'En ayuno'}
+    </span>
+  );
+}
+
+function resumenVentana(config: UserConfig, ahora: number): string {
+  const ayuno = config.fasting!;
+  const inicio = parseTime(ayuno.eatingWindowStart);
+  const cierre = (inicio + Math.round(ayuno.eatingWindowHours * 60)) % 1440;
+  const dentro = ((ahora - inicio) % 1440 + 1440) % 1440 < Math.round(ayuno.eatingWindowHours * 60);
+  return dentro
+    ? `Cierra a las ${formatTime(cierre)}`
+    : `Abre a las ${formatTime(inicio)}`;
+}
+
+function resumenPendiente(eventos: ScheduledEvent[], ahora: number): string {
+  const faltan = eventos.filter((e) => e.minutes > ahora).length;
+  if (faltan === 0) return 'Nada más por hoy';
+  return `${faltan} ${faltan === 1 ? 'evento' : 'eventos'} por delante`;
 }

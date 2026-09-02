@@ -1,14 +1,22 @@
 import { describeFormula, type NutritionPlan, type UserConfig } from '@pa/core';
 import { comidasLibres, nombresSlot } from '../lib/datos.ts';
 import { Aviso } from '../componentes/Aviso.tsx';
+import { Seccion } from '../componentes/Seccion.tsx';
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
+/**
+ * La referencia del plan. Se consulta puntualmente —"¿cuánto arroz va?"— y no
+ * se lee de corrido, así que todo está plegado y cada sección muestra un
+ * resumen que responde la pregunta frecuente sin abrirla.
+ */
 export function Plan({ plan, config }: { plan: NutritionPlan; config: UserConfig }) {
   const libres = comidasLibres(plan, config);
   const NOMBRE_SLOT = nombresSlot(plan);
   const activos = new Set(config.slots.filter((s) => s.enabled !== false).map((s) => s.slotId));
   const slots = plan.slots.filter((s) => activos.size === 0 || activos.has(s.id));
+  const conFormula = slots.filter((s) => describeFormula(plan, s));
+  const grupos = plan.foodGroups.filter((g) => g.exchanges?.length);
 
   return (
     <>
@@ -17,27 +25,40 @@ export function Plan({ plan, config }: { plan: NutritionPlan; config: UserConfig
         <h1 className="titulo-pantalla">Tu plan</h1>
       </header>
 
-      <section className="tarjeta">
-        <h3 className="encabezado-seccion" style={{ margin: 0 }}>Cómo se arma cada comida</h3>
-        {slots.map((slot) => {
-          const formula = describeFormula(plan, slot);
-          if (!formula) return null;
-          return (
-            <div key={slot.id} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <span className="encabezado-seccion" style={{ fontSize: 11 }}>{slot.name}</span>
-              <span style={{ fontSize: 14, lineHeight: 1.45 }}>{formula}</span>
-            </div>
-          );
-        })}
-      </section>
+      <Seccion
+        titulo="Cómo se arma cada comida"
+        resumen={`${conFormula.length} momentos del día`}
+        abiertaPorDefecto
+      >
+        {conFormula.map((slot) => (
+          <div key={slot.id} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <span className="encabezado-seccion" style={{ fontSize: 11 }}>{slot.name}</span>
+            <span style={{ fontSize: 14, lineHeight: 1.45 }}>{describeFormula(plan, slot)}</span>
+          </div>
+        ))}
+      </Seccion>
 
-      <section className="tarjeta">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-          <h3 className="encabezado-seccion" style={{ margin: 0 }}>Comidas del 20%</h3>
-          <span className="chip chip-ambar">{libres.planned.length} de {libres.perWeek} usadas</span>
-        </div>
+      {plan.proteinTargetGrams != null && (
+        <Seccion
+          titulo="Objetivo proteico"
+          resumen={`${plan.proteinTargetGrams} g por día`}
+        >
+          <p className="nota">
+            Las equivalencias de proteínas indican cuántos gramos aporta cada opción.
+            Si un día queda un poco por debajo no pasa nada: el resto de los alimentos
+            también aporta.
+          </p>
+        </Seccion>
+      )}
+
+      <Seccion
+        titulo="Comidas del 20%"
+        resumen={`${libres.planned.length} de ${libres.perWeek} usadas esta semana`}
+        chip={libres.warnings.length > 0 ? <span className="chip chip-ambar">Revisar</span> : undefined}
+      >
         <p className="nota">
-          {libres.perWeek} de las {libres.totalPerWeek ?? 21} comidas de la semana pueden salirse del plan.
+          {libres.perWeek} de las {libres.totalPerWeek ?? 21} comidas de la semana pueden salirse
+          del plan. Moverlas es parte del plan: elegí cuándo te sirven.
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {libres.planned.map((f, n) => (
@@ -53,39 +74,41 @@ export function Plan({ plan, config }: { plan: NutritionPlan; config: UserConfig
           ))}
         </div>
         {libres.warnings.map((w, n) => <Aviso key={n} texto={w} />)}
-      </section>
+      </Seccion>
 
-      <section className="tarjeta">
-        <h3 className="encabezado-seccion" style={{ margin: 0 }}>Equivalencias</h3>
-        <p className="nota">Dentro de cada grupo, las opciones son intercambiables entre sí.</p>
-        {plan.foodGroups.filter((g) => g.exchanges?.length).map((g) => (
-          <div className="eq-grupo" key={g.id}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <i className="punto" style={{ background: `var(--g-${g.id}, var(--tenue))` }} />
-              <span style={{ fontSize: 13.5, fontWeight: 600 }}>{g.name}</span>
-            </div>
-            {g.notes && <p className="nota">{g.notes}</p>}
-            <ul className="eq-lista">
-              {g.exchanges!.map((ex, n) => {
-                const cant = ex.qty != null ? `${ex.qty} ${ex.unit ?? ''}`.trim() : (ex.unit ?? '');
-                return (
-                  <li key={n}>
-                    <span>{ex.label}{ex.proteinGrams != null && cant ? ` · ${cant}` : ''}</span>
-                    {ex.proteinGrams != null
-                      ? <span className="eq-prot mono">{ex.proteinGrams} g prot.</span>
-                      : <span className="eq-cant mono">{cant}</span>}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
-      </section>
+      {/* Cada grupo se pliega por separado: nadie busca "hidratos" y "lácteos"
+          al mismo tiempo, y 27 equivalencias juntas son medio metro de scroll. */}
+      {grupos.map((g) => (
+        <Seccion
+          key={g.id}
+          titulo={g.name}
+          resumen={`${g.exchanges!.length} opciones intercambiables`}
+          chip={<i className="punto" style={{ background: `var(--g-${g.id}, var(--tenue))` }} />}
+        >
+          {g.notes && <p className="nota">{g.notes}</p>}
+          <ul className="eq-lista">
+            {g.exchanges!.map((ex, n) => {
+              const cant = ex.qty != null ? `${ex.qty} ${ex.unit ?? ''}`.trim() : (ex.unit ?? '');
+              return (
+                <li key={n}>
+                  <span>
+                    {ex.label}
+                    {ex.proteinGrams != null && cant ? ` · ${cant}` : ''}
+                    {ex.note && <span className="eq-cant"> — {ex.note}</span>}
+                  </span>
+                  {ex.proteinGrams != null
+                    ? <span className="eq-prot mono">{ex.proteinGrams} g prot.</span>
+                    : <span className="eq-cant mono">{cant}</span>}
+                </li>
+              );
+            })}
+          </ul>
+        </Seccion>
+      ))}
 
       {plan.guidelines && plan.guidelines.length > 0 && (
-        <section className="tarjeta">
-          <h3 className="encabezado-seccion" style={{ margin: 0 }}>Reglas</h3>
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <Seccion titulo="Reglas del plan" resumen={`${plan.guidelines.length} indicaciones`}>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
             {plan.guidelines.map((r, n) => (
               <li key={n} style={{ fontSize: 13, lineHeight: 1.45, paddingLeft: 15, position: 'relative', color: 'var(--tenue)' }}>
                 <i style={{ position: 'absolute', left: 0, top: 7, width: 5, height: 5, borderRadius: '50%', background: 'var(--verde)' }} />
@@ -93,7 +116,7 @@ export function Plan({ plan, config }: { plan: NutritionPlan; config: UserConfig
               </li>
             ))}
           </ul>
-        </section>
+        </Seccion>
       )}
     </>
   );

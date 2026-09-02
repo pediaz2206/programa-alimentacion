@@ -229,3 +229,67 @@ h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0;
 .vacio { text-align: center; color: var(--tenue); font-size: 13.5px; padding: 6px 10px; margin: 0; line-height: 1.5; }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ---------------------------------------------------------- plegables --- */
+.plegable {
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+  border-radius: var(--r);
+  box-shadow: var(--sombra);
+  overflow: hidden;
+}
+.plegable-tope {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: none; border: 0; cursor: pointer; font: inherit; color: inherit;
+  padding: 14px 16px; text-align: left;
+}
+.plegable-tope:hover { background: var(--superficie-2); }
+.plegable-tope:focus-visible { outline: 2px solid var(--verde); outline-offset: -2px; }
+.plegable-textos { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.plegable-titulo {
+  font-size: 12px; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--tenue); font-weight: 600;
+}
+.plegable-resumen {
+  font-size: 13.5px; color: var(--tinta);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.plegable-flecha { width: 18px; height: 18px; flex: none; color: var(--tenue); transition: transform .18s; }
+.plegable.abierta .plegable-flecha { transform: rotate(180deg); }
+.plegable-cuerpo {
+  padding: 2px 16px 16px;
+  display: flex; flex-direction: column; gap: 14px;
+  border-top: 1px solid var(--linea);
+  padding-top: 14px;
+}
+
+/* -------------------------------------------------------------- ahora --- */
+.encabezado-hoy { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.hero {
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+  border-left: 3px solid var(--verde);
+  border-radius: var(--r);
+  box-shadow: var(--sombra);
+  padding: 18px;
+  display: flex; flex-direction: column; gap: 13px;
+}
+.hero.urgente { border-left-color: var(--ambar); }
+.hero-tope { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.hero h2 { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+.hero-hora { font-size: 14px; color: var(--tenue); white-space: nowrap; }
+.hero-cuando { font-size: 12.5px; font-weight: 600; color: var(--verde); }
+.hero.urgente .hero-cuando { color: var(--ambar); }
+.hero-detalle { font-size: 13.5px; color: var(--tenue); line-height: 1.45; margin: 0; }
+
+/* --------------------------------------------------------- progreso ---- */
+.tira {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: var(--superficie); border: 1px solid var(--linea);
+  border-radius: var(--r);
+}
+.tira-datos { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.tira-fila { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.tira-nombre { font-size: 13px; font-weight: 600; }
+.tira-cifra { font-size: 12.5px; color: var(--tenue); }

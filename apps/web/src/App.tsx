@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import type { ScheduledEvent } from '@pa/core';
 import { agendaDe, minutosAhora } from './lib/datos.ts';
 import { configEmpaquetada, planEmpaquetado } from './lib/semilla.ts';
 import {
   borrarRegistro, cargarDatos, guardarConfig, guardarRegistro, listarRegistros, type Datos,
 } from './lib/repositorio.ts';
-import type { Registro as Fila } from './lib/registro.ts';
+import { fechaISO, type Registro as Fila } from './lib/registro.ts';
 import { supabase } from './lib/supabase.ts';
 import { Hoy } from './pantallas/Hoy.tsx';
 import { Plan } from './pantallas/Plan.tsx';
@@ -118,6 +119,7 @@ export function App() {
             ahora={ahora}
             config={datos.config}
             registros={registros}
+            onRegistrar={(e) => void alGuardar(desdeEvento(e))}
             onIrARegistro={() => setPestana('registro')}
           />
         )}
@@ -167,6 +169,25 @@ function leerTema(): Tema {
   } catch {
     return 'claro';
   }
+}
+
+/**
+ * Registrar desde la pantalla principal, sin navegar.
+ *
+ * Es la accion mas frecuente del dia y ocurre justo cuando la app se abre por
+ * la notificacion: mandarla a otra pestaña para confirmar lo que ya dice la
+ * pantalla es friccion pura. Los ajustes finos (foto, nota, otra opcion) viven
+ * en la pestaña Registro.
+ */
+function desdeEvento(evento: ScheduledEvent): Fila {
+  const opcion = evento.suggestions?.[0];
+  return {
+    fecha: fechaISO(),
+    slotId: evento.slotId!,
+    optionId: evento.freeMeal ? null : (opcion?.id ?? null),
+    proteinGrams: evento.freeMeal ? 0 : (opcion?.proteinGrams ?? null),
+    esLibre: evento.freeMeal ?? false,
+  };
 }
 
 /** Los errores de red y de Supabase llegan con formas distintas. */
