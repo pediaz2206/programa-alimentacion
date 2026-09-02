@@ -11,15 +11,16 @@ import { fechaISO, type Registro as Fila } from './lib/registro.ts';
 import { supabase } from './lib/supabase.ts';
 import { Hoy } from './pantallas/Hoy.tsx';
 import { Plan } from './pantallas/Plan.tsx';
+import { Compras } from './pantallas/Compras.tsx';
 import { Registro } from './pantallas/Registro.tsx';
 import { Ajustes } from './pantallas/Ajustes.tsx';
 import { Bienvenida } from './pantallas/Bienvenida.tsx';
 import { Pacientes } from './pantallas/Pacientes.tsx';
 import { esProfesional as consultarProfesional, registrarPerfil } from './lib/vinculos.ts';
 import { escucharPlan } from './lib/envivo.ts';
+import { useRuta, type Pestana } from './lib/ruta.ts';
 import { hayBackend } from './lib/supabase.ts';
 
-type Pestana = 'hoy' | 'plan' | 'registro' | 'pacientes' | 'ajustes';
 type Tema = 'claro' | 'oscuro';
 
 const CLAVE_TEMA = 'en-punto:tema';
@@ -27,16 +28,20 @@ const CLAVE_TEMA = 'en-punto:tema';
 const ICONOS: Record<Pestana, JSX.Element> = {
   hoy: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></>,
   plan: <><path d="M5 4h14v16H5z" /><path d="M8.5 9h7M8.5 13h7M8.5 17h4" /></>,
+  compras: <><path d="M4 7h13l-1.2 8H6.2z" /><path d="M4 7L3 4H1.6" /><circle cx="7" cy="19" r="1.3" /><circle cx="15" cy="19" r="1.3" /></>,
   registro: <><path d="M4 7h16v13H4z" /><path d="M8 7V5h8v2" /><circle cx="12" cy="13.5" r="3" /></>,
   pacientes: <><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19a5.5 5.5 0 0111 0" /><path d="M16 6.2a3 3 0 010 5.6M17.5 19a5.6 5.6 0 00-1.6-3.9" /></>,
   ajustes: <><circle cx="12" cy="12" r="3" /><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8" /></>,
 };
 const NOMBRES: Record<Pestana, string> = {
-  hoy: 'Hoy', plan: 'Plan', registro: 'Registro', pacientes: 'Pacientes', ajustes: 'Ajustes',
+  hoy: 'Hoy', plan: 'Plan', compras: 'Compras', registro: 'Registro',
+  pacientes: 'Pacientes', ajustes: 'Ajustes',
 };
 
 export function App() {
-  const [pestana, setPestana] = useState<Pestana>('hoy');
+  const [ruta, navegar] = useRuta();
+  const pestana = ruta.pestana;
+  const irA = (p: Pestana) => navegar({ pestana: p });
   const [tema, setTema] = useState<Tema>(leerTema);
   const [sesion, setSesion] = useState<Session | null>(null);
   // Saber si hay sesion es asincronico. Sin este estado, quien ya entro ve un
@@ -140,8 +145,15 @@ export function App() {
   );
 
   function guardarConfigLocal(c: UserConfig) {
+    const anterior = datos.config;
     setDatos((d) => ({ ...d, config: c }));
-    void guardarConfig(sesion, c).catch((e) => setError(mensaje(e)));
+    setError(null);
+    void guardarConfig(sesion, c).catch((e) => {
+      // Mostrar un cambio que el servidor rechazó es peor que no aplicarlo:
+      // se ve aplicado hasta que alguien recarga y vuelve solo.
+      setDatos((d) => ({ ...d, config: anterior }));
+      setError(`No se pudo guardar el cambio. ${mensaje(e)}`);
+    });
   }
 
   async function alGuardar(r: Fila) {
@@ -192,12 +204,13 @@ export function App() {
             config={datos.config}
             registros={registros}
             onRegistrar={(e) => void alGuardar(desdeEvento(e))}
-            onIrARegistro={() => setPestana('registro')}
-            onIrAAjustes={() => setPestana('ajustes')}
+            onIrARegistro={() => irA('registro')}
+            onIrAAjustes={() => irA('ajustes')}
             onConfig={guardarConfigLocal}
           />
         )}
         {pestana === 'plan' && <Plan plan={datos.plan} config={datos.config} />}
+        {pestana === 'compras' && <Compras plan={datos.plan} config={datos.config} />}
         {pestana === 'registro' && (
           <Registro
             plan={datos.plan}
@@ -208,7 +221,13 @@ export function App() {
             guardando={guardando}
           />
         )}
-        {pestana === 'pacientes' && <Pacientes sesion={sesion} />}
+        {pestana === 'pacientes' && (
+          <Pacientes
+            sesion={sesion}
+            pacienteAbierto={ruta.pacienteId}
+            onAbrir={(id) => navegar({ pestana: 'pacientes', ...(id ? { pacienteId: id } : {}) })}
+          />
+        )}
         {pestana === 'ajustes' && (
           <Ajustes
             plan={datos.plan}
@@ -223,11 +242,11 @@ export function App() {
         )}
       </main>
 
-      <nav className={`barra ${profesional ? 'barra-5' : ''}`} aria-label="Secciones">
+      <nav className={`barra barra-${profesional ? 6 : 5}`} aria-label="Secciones">
         {(Object.keys(NOMBRES) as Pestana[])
           .filter((p) => p !== 'pacientes' || profesional)
           .map((p) => (
-          <button key={p} onClick={() => setPestana(p)} aria-current={pestana === p ? 'page' : undefined}>
+          <button key={p} onClick={() => irA(p)} aria-current={pestana === p ? 'page' : undefined}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               {ICONOS[p]}
             </svg>

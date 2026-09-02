@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { computeDailyBalance, remainingPortions, sumPortions } from '../src/balance.ts';
-import { buildShoppingList, checklistFor } from '../src/shopping.ts';
+import { buildShoppingList, checklistFor, formatCantidad, pluralizar } from '../src/shopping.ts';
 import { describePlate, plateFor } from '../src/plate.ts';
 import { validateConfig, validatePlan } from '../src/validate.ts';
 import { config, plan } from './fixtures.ts';
@@ -130,4 +130,39 @@ test('el plan de ejemplo del repo es valido', async () => {
   const cfg = JSON.parse(readFileSync('data/config.ejemplo.json', 'utf8')) as UserConfig;
   assert.deepEqual(validatePlan(ejemplo), []);
   assert.deepEqual(validateConfig(ejemplo, cfg), []);
+});
+
+test('las unidades se pluralizan como en castellano', () => {
+  assert.equal(formatCantidad(1, 'unidad'), '1 unidad');
+  assert.equal(formatCantidad(14, 'unidad'), '14 unidades');
+  assert.equal(formatCantidad(2, 'rebanada'), '2 rebanadas');
+  assert.equal(formatCantidad(3, 'taza'), '3 tazas');
+});
+
+test('las abreviaturas no se pluralizan: nadie escribe "500 gs"', () => {
+  assert.equal(formatCantidad(500, 'g'), '500 g');
+  assert.equal(formatCantidad(250, 'ml'), '250 ml');
+  assert.equal(formatCantidad(2, 'cda'), '2 cda');
+});
+
+test('una unidad compuesta se pluraliza en su primera palabra', () => {
+  assert.equal(formatCantidad(2, 'rebanada de pan'), '2 rebanadas de pan');
+});
+
+test('si esa primera palabra es una abreviatura, no se pluraliza nada', () => {
+  // El plan mide en "g en crudo": "120 gs en crudo" no lo escribe nadie.
+  assert.equal(formatCantidad(120, 'g en crudo'), '120 g en crudo');
+  assert.equal(formatCantidad(100, 'g cocidos'), '100 g cocidos');
+});
+
+test('reglas del plural para consonantes', () => {
+  assert.equal(pluralizar('unidad', 2), 'unidades');
+  assert.equal(pluralizar('nuez', 2), 'nueces');
+  assert.equal(pluralizar('lata', 2), 'latas');
+  assert.equal(pluralizar('gajos', 2), 'gajos', 'ya está en plural');
+});
+
+test('las cantidades decimales usan coma', () => {
+  assert.equal(formatCantidad(0.25, 'unidad'), '0,25 unidades');
+  assert.equal(formatCantidad(0.5, ''), '0,5');
 });

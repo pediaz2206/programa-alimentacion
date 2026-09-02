@@ -11,9 +11,12 @@ import { Aviso } from '../componentes/Aviso.tsx';
 import { Encabezado } from '../componentes/Encabezado.tsx';
 import { Avatar } from '../componentes/Avatar.tsx';
 
-export function Pacientes({ sesion }: { sesion: Session | null }) {
+export function Pacientes({ sesion, pacienteAbierto, onAbrir }: {
+  sesion: Session | null;
+  pacienteAbierto: string | undefined;
+  onAbrir: (id: string | null) => void;
+}) {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
-  const [abierto, setAbierto] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,14 +32,14 @@ export function Pacientes({ sesion }: { sesion: Session | null }) {
   }
   useEffect(() => { void recargar(); }, [sesion]);
 
-  const elegido = pacientes.find((p) => p.id === abierto);
+  const elegido = pacientes.find((p) => p.id === pacienteAbierto);
   if (elegido) {
     return (
       <Detalle
         paciente={elegido}
         pacientes={pacientes}
         sesion={sesion}
-        onVolver={() => { setAbierto(null); void recargar(); }}
+        onVolver={() => { onAbrir(null); void recargar(); }}
       />
     );
   }
@@ -58,7 +61,7 @@ export function Pacientes({ sesion }: { sesion: Session | null }) {
         </section>
       ) : (
         pacientes.map((p) => (
-          <FilaPaciente key={p.id} paciente={p} onAbrir={() => setAbierto(p.id)} />
+          <FilaPaciente key={p.id} paciente={p} onAbrir={() => onAbrir(p.id)} />
         ))
       )}
 

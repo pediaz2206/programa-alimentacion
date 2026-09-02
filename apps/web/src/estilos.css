@@ -109,8 +109,10 @@ h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0;
 .barra button svg { width: 21px; height: 21px; }
 .barra button[aria-current="page"] { color: var(--verde); }
 .barra.barra-5 { grid-template-columns: repeat(5, 1fr); }
-.barra.barra-5 button { font-size: 10px; }
-.barra.barra-5 button svg { width: 19px; height: 19px; }
+.barra.barra-6 { grid-template-columns: repeat(6, 1fr); }
+.barra.barra-5 button, .barra.barra-6 button { font-size: 10px; }
+.barra.barra-6 button { font-size: 9.5px; }
+.barra.barra-5 button svg, .barra.barra-6 button svg { width: 19px; height: 19px; }
 .barra button:focus-visible { outline: 2px solid var(--verde); outline-offset: -3px; }
 
 /* ---------------------------------------------------------- tarjetas ---- */
@@ -464,3 +466,20 @@ button.ventana:focus-visible { outline: 2px solid var(--verde); outline-offset: 
   font-family: Archivo, sans-serif;
 }
 .con-avatar { display: flex; align-items: center; gap: 11px; }
+
+/* ------------------------------------------------------- segmentado ----- */
+.segmentado {
+  display: flex; gap: 2px; padding: 3px;
+  background: var(--superficie-2); border-radius: 10px;
+  align-self: flex-start;
+}
+.segmentado button {
+  border: 0; background: none; cursor: pointer; font: inherit;
+  font-size: 13px; font-weight: 600; color: var(--tenue);
+  padding: 6px 14px; border-radius: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+.segmentado button[aria-pressed="true"] {
+  background: var(--superficie); color: var(--tinta); box-shadow: var(--sombra);
+}
+.segmentado button:focus-visible { outline: 2px solid var(--verde); outline-offset: -2px; }
