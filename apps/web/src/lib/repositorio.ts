@@ -47,31 +47,45 @@ export async function cargarDatos(sesion: Session | null): Promise<Datos> {
   }
 }
 
-async function traerDelServidor(uid: string): Promise<Omit<Datos, 'desdeCache'>> {
-  const { data: planes, error } = await supabase!
+/**
+ * El plan activo de una persona.
+ *
+ * Existe para que haya UNA definicion. Cuando leer y escribir eligen "el plan
+ * activo" con consultas distintas y alguien tiene mas de una fila, se escribe
+ * en una y se lee de la otra: el cambio se guarda de verdad y aun asi
+ * desaparece al recargar. Con orden explicito, las dos eligen la misma.
+ */
+async function planActivoDe(uid: string, campos: string): Promise<Record<string, unknown> | null> {
+  const { data, error } = await supabase!
     .from('plans')
-    .select('id, plan_versions(id, version, doc)')
+    .select(campos)
     .eq('patient_id', uid)
     .eq('is_active', true)
     .order('created_at', { ascending: false })
+    .order('id', { ascending: true })   // desempate estable si comparten fecha
     .limit(1);
   if (error) throw error;
+  return (data?.[0] as Record<string, unknown> | undefined) ?? null;
+}
+
+async function traerDelServidor(uid: string): Promise<Omit<Datos, 'desdeCache'>> {
+  const planes = await planActivoDe(uid, 'id, plan_versions(id, version, doc)');
 
   // Primera vez: se siembra con el plan empaquetado para que la app tenga
   // contenido desde el minuto cero, sin una pantalla vacia esperando datos.
-  if (!planes || planes.length === 0) return sembrar(uid);
+  if (!planes) return sembrar(uid);
 
-  const fila = planes[0]!;
-  const versiones = (fila.plan_versions ?? []) as Array<{ id: string; version: number; doc: unknown }>;
+  const fila = planes;
+  const versiones = (fila['plan_versions'] ?? []) as Array<{ id: string; version: number; doc: unknown }>;
   const ultima = versiones.sort((a, b) => b.version - a.version)[0];
 
   const { data: configs } = await supabase!
-    .from('configs').select('doc').eq('patient_id', uid).eq('plan_id', fila.id).maybeSingle();
+    .from('configs').select('doc').eq('patient_id', uid).eq('plan_id', fila['id']).maybeSingle();
 
   return {
     plan: (ultima?.doc as NutritionPlan) ?? planEmpaquetado,
     config: configs?.doc as UserConfig,
-    planId: fila.id as string,
+    planId: fila['id'] as string,
     planVersionId: ultima?.id ?? null,
   };
 }
@@ -105,14 +119,22 @@ export async function guardarConfig(sesion: Session | null, config: UserConfig):
   const copia = cache.leerDatos(user.id);
   if (copia) cache.guardarDatos(user.id, { ...copia, config });
 
-  const { data: plan } = await supabase!
-    .from('plans').select('id').eq('patient_id', user.id).eq('is_active', true).limit(1).maybeSingle();
-  if (!plan) return;
-  const { error } = await supabase!.from('configs').upsert(
-    { patient_id: user.id, plan_id: plan.id, doc: config, updated_at: new Date().toISOString() },
+  const plan = await planActivoDe(user.id, 'id');
+  // Antes esto era `return`: la funcion terminaba bien, quien llamaba creia que
+  // habia guardado, y no se escribia nada. Un exito silencioso es peor que un
+  // error, porque nadie lo investiga.
+  if (!plan) throw new Error('No encontré tu plan activo, así que no pude guardar el cambio.');
+
+  const { data, error } = await supabase!.from('configs').upsert(
+    { patient_id: user.id, plan_id: plan['id'], doc: config, updated_at: new Date().toISOString() },
     { onConflict: 'patient_id,plan_id' },
-  );
+  ).select('id');
   if (error) throw error;
+  // Un upsert que no toca ninguna fila devuelve 200 y un arreglo vacio: sin
+  // esto, una politica de RLS que filtra en silencio se ve como un guardado.
+  if (!data || data.length === 0) {
+    throw new Error('El servidor aceptó el pedido pero no guardó nada.');
+  }
 }
 
 export async function listarRegistros(sesion: Session | null): Promise<Registro[]> {

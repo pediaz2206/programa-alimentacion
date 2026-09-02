@@ -70,8 +70,14 @@ h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0;
 
 .app {
   display: flex; flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;   /* respeta la barra del navegador cuando se colapsa */
+  /*
+   * Sin min-height a proposito. La barra de navegacion es position: fixed, o
+   * sea que ya se ancla al viewport sola: forzar una altura minima en unidades
+   * de viewport no aportaba nada y en iOS deja el documento mas alto que el
+   * contenido despues de usar la camara, porque el viewport visual queda
+   * encogido y dvh no vuelve a su valor. El sintoma es scroll de sobra con
+   * espacio en blanco abajo.
+   */
 }
 .contenido {
   flex: 1;
@@ -243,7 +249,10 @@ h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0;
 }
 .campo input:focus-visible, .campo select:focus-visible { outline: 2px solid var(--verde); outline-offset: 1px; }
 
-.foto-previa { width: 100%; border-radius: 10px; display: block; border: 1px solid var(--linea); }
+.foto-previa {
+  width: 100%; max-height: 42vh; object-fit: cover;
+  border-radius: 10px; display: block; border: 1px solid var(--linea);
+}
 .vacio { text-align: center; color: var(--tenue); font-size: 13.5px; padding: 6px 10px; margin: 0; line-height: 1.5; }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
