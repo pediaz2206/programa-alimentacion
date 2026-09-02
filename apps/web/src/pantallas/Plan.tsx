@@ -28,7 +28,6 @@ export function Plan({ plan, config }: { plan: NutritionPlan; config: UserConfig
       <Seccion
         titulo="Cómo se arma cada comida"
         resumen={`${conFormula.length} momentos del día`}
-        abiertaPorDefecto
       >
         {conFormula.map((slot) => (
           <div key={slot.id} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>

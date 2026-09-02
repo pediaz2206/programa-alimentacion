@@ -5,6 +5,7 @@ interface Props {
   /** Resumen que se lee sin abrir: evita tener que desplegar para saber. */
   resumen?: string;
   chip?: ReactNode;
+  /** Plegado es el default: la pantalla abre corta y se despliega lo que hace falta. */
   abiertaPorDefecto?: boolean;
   children: ReactNode;
 }

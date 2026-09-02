@@ -293,3 +293,46 @@ h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0;
 .tira-fila { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .tira-nombre { font-size: 13px; font-weight: 600; }
 .tira-cifra { font-size: 12.5px; color: var(--tenue); }
+
+/* ---------------------------------------------------------- bienvenida --- */
+.bienvenida {
+  min-height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  padding: 32px 20px calc(32px + env(safe-area-inset-bottom));
+}
+.bienvenida-marco {
+  max-width: 400px; width: 100%;
+  display: flex; flex-direction: column; gap: 18px;
+}
+.bienvenida-marca {
+  display: flex; align-items: center; gap: 9px;
+  font-family: "Bricolage Grotesque", Archivo, sans-serif;
+  font-size: 17px; font-weight: 800; letter-spacing: -.02em;
+  color: var(--verde);
+}
+.bienvenida-marca svg { width: 24px; height: 24px; }
+.bienvenida h1 {
+  font-size: 30px; font-weight: 800; letter-spacing: -.025em; line-height: 1.15;
+}
+.bienvenida-bajada { font-size: 15px; line-height: 1.55; color: var(--tenue); margin: 0; }
+.bienvenida-lista {
+  list-style: none; margin: 4px 0; padding: 0;
+  display: flex; flex-direction: column; gap: 11px;
+}
+.bienvenida-lista li {
+  font-size: 14px; line-height: 1.45; color: var(--tenue);
+  padding-left: 17px; position: relative;
+}
+.bienvenida-lista li::before {
+  content: ""; position: absolute; left: 0; top: 8px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--verde);
+}
+.bienvenida-lista b { color: var(--tinta); font-weight: 600; }
+.bienvenida-legal { font-size: 12px; line-height: 1.5; color: var(--tenue); margin: 0; text-align: center; }
+
+/* Mientras se resuelve si hay sesión: sin esto, quien ya entró ve un
+   parpadeo de la pantalla de login en cada carga. */
+.cargando {
+  min-height: 100%; display: grid; place-items: center;
+  color: var(--tenue); font-size: 13.5px;
+}

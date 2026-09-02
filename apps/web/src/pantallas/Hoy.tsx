@@ -76,7 +76,6 @@ export function Hoy({ plan, eventos, ahora, config, registros, onRegistrar, onIr
       <Seccion
         titulo="El resto del día"
         resumen={resumenPendiente(eventos, ahora)}
-        abiertaPorDefecto
       >
         <LineaDelDia eventos={eventos} ahora={ahora} momento={momento} />
       </Seccion>

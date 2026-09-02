@@ -12,6 +12,8 @@ import { Hoy } from './pantallas/Hoy.tsx';
 import { Plan } from './pantallas/Plan.tsx';
 import { Registro } from './pantallas/Registro.tsx';
 import { Ajustes } from './pantallas/Ajustes.tsx';
+import { Bienvenida } from './pantallas/Bienvenida.tsx';
+import { hayBackend } from './lib/supabase.ts';
 
 type Pestana = 'hoy' | 'plan' | 'registro' | 'ajustes';
 type Tema = 'claro' | 'oscuro';
@@ -30,6 +32,9 @@ export function App() {
   const [pestana, setPestana] = useState<Pestana>('hoy');
   const [tema, setTema] = useState<Tema>(leerTema);
   const [sesion, setSesion] = useState<Session | null>(null);
+  // Saber si hay sesion es asincronico. Sin este estado, quien ya entro ve un
+  // parpadeo de la pantalla de login en cada carga.
+  const [sesionResuelta, setSesionResuelta] = useState(!hayBackend);
   const [datos, setDatos] = useState<Datos>({
     plan: planEmpaquetado, config: configEmpaquetada, planVersionId: null,
   });
@@ -52,13 +57,20 @@ export function App() {
 
   useEffect(() => {
     if (!supabase) return;
-    void supabase.auth.getSession().then(({ data }) => setSesion(data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSesion(s));
+    void supabase.auth.getSession().then(({ data }) => {
+      setSesion(data.session);
+      setSesionResuelta(true);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      setSesion(s);
+      setSesionResuelta(true);
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // Al entrar o salir cambia la fuente de datos; el resto de la app no cambia.
+  // Los datos son de una persona concreta: sin sesion no hay nada que cargar.
   useEffect(() => {
+    if (!sesion) return;
     let vigente = true;
     void (async () => {
       try {
@@ -98,6 +110,9 @@ export function App() {
       setError(mensaje(e));
     }
   }
+
+  if (!sesionResuelta) return <div className="cargando">Cargando…</div>;
+  if (!sesion) return <Bienvenida />;
 
   return (
     <div className="app">
