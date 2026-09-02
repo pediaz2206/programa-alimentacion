@@ -3,7 +3,7 @@ import {
   ajusteDeVentana, aplicarAjuste, estadoActual, humanizeMinutes,
   type Momento, type NutritionPlan, type ScheduledEvent, type UserConfig,
 } from '@pa/core';
-import { Ventana } from '../componentes/Ventana.tsx';
+import { Franja } from '../componentes/Franja.tsx';
 import { Aviso } from '../componentes/Aviso.tsx';
 import { Encabezado } from '../componentes/Encabezado.tsx';
 import { balanceDe } from '../lib/datos.ts';
@@ -37,7 +37,14 @@ export function Hoy({ plan, eventos, ahora, config, registros, onRegistrar, onIr
         titulo="Hoy"
       />
 
-      <Ventana ayuno={config.fasting} ahora={ahora} onTocar={onIrAAjustes} />
+      <button className="franja-boton" onClick={onIrAAjustes} type="button">
+        <Franja
+          eventos={eventos}
+          ahora={ahora}
+          ayuno={config.fasting}
+          registrados={slotsRegistrados}
+        />
+      </button>
 
       {ajuste.tipo !== 'ok' && (
         <section className="arreglo">
