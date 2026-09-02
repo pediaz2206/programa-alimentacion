@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { validatePlan, type NutritionPlan } from '@pa/core';
 import {
-  metricasDe, misPacientes, publicarVersion, type Metricas, type Paciente,
+  metricasDe, misPacientes, planesParaCopiar, publicarVersion,
+  type Metricas, type Paciente,
 } from '../lib/profesional.ts';
 import { invitarPaciente } from '../lib/vinculos.ts';
 import { Seccion } from '../componentes/Seccion.tsx';
@@ -29,7 +30,14 @@ export function Pacientes({ sesion }: { sesion: Session | null }) {
 
   const elegido = pacientes.find((p) => p.id === abierto);
   if (elegido) {
-    return <Detalle paciente={elegido} sesion={sesion} onVolver={() => { setAbierto(null); void recargar(); }} />;
+    return (
+      <Detalle
+        paciente={elegido}
+        pacientes={pacientes}
+        sesion={sesion}
+        onVolver={() => { setAbierto(null); void recargar(); }}
+      />
+    );
   }
 
   return (
@@ -83,8 +91,8 @@ function FilaPaciente({ paciente, onAbrir }: { paciente: Paciente; onAbrir: () =
   );
 }
 
-function Detalle({ paciente, sesion, onVolver }: {
-  paciente: Paciente; sesion: Session | null; onVolver: () => void;
+function Detalle({ paciente, pacientes, sesion, onVolver }: {
+  paciente: Paciente; pacientes: Paciente[]; sesion: Session | null; onVolver: () => void;
 }) {
   const m = metricasDe(paciente);
   return (
@@ -125,6 +133,7 @@ function Detalle({ paciente, sesion, onVolver }: {
       </Seccion>
 
       {paciente.plan && <EditarPlan paciente={paciente} sesion={sesion} />}
+      <CopiarPlan paciente={paciente} pacientes={pacientes} sesion={sesion} />
       <SubirPlan paciente={paciente} sesion={sesion} />
     </>
   );
@@ -247,6 +256,71 @@ function EditarPlan({ paciente, sesion }: { paciente: Paciente; sesion: Session 
       <button className="boton boton-lleno boton-ancho" disabled={!cambio || guardando}
               onClick={() => void publicar()}>
         {guardando ? 'Publicando…' : listo ? 'Publicada' : 'Publicar versión nueva'}
+      </button>
+      {error && <Aviso texto={error} />}
+    </Seccion>
+  );
+}
+
+/**
+ * Partir del plan de otra persona en vez de transcribir todo de nuevo.
+ *
+ * Es lo que pasa en la practica: dos personas con objetivos parecidos comparten
+ * casi todo el plan y se diferencian en los numeros. Se copia y despues se
+ * ajusta arriba, en vez de empezar de cero.
+ */
+function CopiarPlan({ paciente, pacientes, sesion }: {
+  paciente: Paciente; pacientes: Paciente[]; sesion: Session | null;
+}) {
+  const [fuentes, setFuentes] = useState<Array<{ etiqueta: string; plan: NutritionPlan }>>([]);
+  const [elegida, setElegida] = useState('');
+  const [estado, setEstado] = useState<'listo' | 'copiando' | 'copiado'>('listo');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void planesParaCopiar(sesion, pacientes.filter((p) => p.id !== paciente.id))
+      .then(setFuentes)
+      .catch(() => setFuentes([]));
+  }, [sesion, pacientes, paciente.id]);
+
+  if (fuentes.length === 0) return null;
+  const fuente = fuentes.find((f) => f.etiqueta === elegida);
+
+  return (
+    <Seccion titulo="Copiar un plan" resumen={`${fuentes.length} disponibles`}>
+      <p className="nota">
+        Se publica una copia para {paciente.nombre}. Después la podés ajustar acá
+        sin tocar el original.
+      </p>
+      <div className="campo">
+        <label htmlFor="fuente">Partir de</label>
+        <select id="fuente" value={elegida} onChange={(e) => { setElegida(e.target.value); setEstado('listo'); }}
+                style={{ maxWidth: 200 }}>
+          <option value="">Elegir…</option>
+          {fuentes.map((f) => <option key={f.etiqueta} value={f.etiqueta}>{f.etiqueta}</option>)}
+        </select>
+      </div>
+      {fuente && (
+        <p className="nota">
+          <b>{fuente.plan.name}</b> — {fuente.plan.options.length} opciones
+          {fuente.plan.proteinTargetGrams != null && `, ${fuente.plan.proteinTargetGrams} g de proteína`}.
+        </p>
+      )}
+      <button className="boton boton-lleno boton-ancho" disabled={!fuente || estado !== 'listo'}
+              onClick={() => {
+                if (!fuente) return;
+                setEstado('copiando');
+                setError(null);
+                publicarVersion(sesion, paciente.id, fuente.plan, `Copiado de: ${fuente.etiqueta}`)
+                  .then(() => setEstado('copiado'))
+                  .catch((e: unknown) => {
+                    setError(e instanceof Error ? e.message : 'No se pudo copiar.');
+                    setEstado('listo');
+                  });
+              }}>
+        {estado === 'copiando' ? 'Copiando…'
+          : estado === 'copiado' ? 'Copiado — ya le aparece en la app'
+          : 'Copiar a esta persona'}
       </button>
       {error && <Aviso texto={error} />}
     </Seccion>

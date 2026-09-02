@@ -12,6 +12,9 @@ create extension if not exists "pgcrypto";
 create table if not exists public.profiles (
   id              uuid primary key references auth.users (id) on delete cascade,
   display_name    text,
+  -- Copiado de auth.users al entrar. Sirve de respaldo cuando el proveedor no
+  -- da un nombre: aceptar una invitacion sin saber de quien es no es aceptar.
+  email           text,
   -- La zona horaria es critica: el cron calcula la agenda en el dia local de
   -- cada persona, no en UTC.
   timezone        text not null default 'America/Argentina/Buenos_Aires',
@@ -119,6 +122,31 @@ begin
   get diagnostics atadas = row_count;
   return atadas;
 end $$;
+
+/**
+ * Si esa persona es profesional de quien llama.
+ *
+ * Espeja a has_care_access en la direccion contraria, y a diferencia de
+ * aquella NO exige consentimiento: el paciente tiene que poder ver de quien es
+ * la invitacion justamente para decidir si la acepta.
+ */
+create or replace function public.es_mi_profesional(profesional uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.care_relationships r
+    where r.professional_id = profesional
+      and r.patient_id = auth.uid()
+      and r.status <> 'revoked'
+  );
+$$;
+
+revoke all on function public.es_mi_profesional(uuid) from public;
+grant execute on function public.es_mi_profesional(uuid) to authenticated;
 
 revoke all on function public.reclamar_invitaciones() from public;
 grant execute on function public.reclamar_invitaciones() to authenticated;
@@ -244,6 +272,11 @@ create policy profiles_own on public.profiles
 drop policy if exists profiles_professional_read on public.profiles;
 create policy profiles_professional_read on public.profiles
   for select using (public.has_care_access(id));
+
+-- Y el paciente necesita ver quien le pidio acceso, antes de concederlo.
+drop policy if exists profiles_patient_read on public.profiles;
+create policy profiles_patient_read on public.profiles
+  for select using (public.es_mi_profesional(id));
 
 -- Ambas partes ven el vinculo. Cada una lo corta cuando quiere.
 drop policy if exists care_rel_visible on public.care_relationships;

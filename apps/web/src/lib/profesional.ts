@@ -35,7 +35,7 @@ export async function misPacientes(sesion: Session | null): Promise<Paciente[]> 
 
   const { data: vinculos, error } = await supabase
     .from('care_relationships')
-    .select('id, patient_id, patient_email, profiles!care_relationships_patient_id_fkey(display_name)')
+    .select('id, patient_id, patient_email, profiles!care_relationships_patient_id_fkey(display_name, email)')
     .eq('professional_id', sesion.user.id)
     .eq('status', 'active')
     .not('patient_id', 'is', null);
@@ -104,6 +104,26 @@ export function metricasDe(paciente: Paciente): Metricas | null {
   };
 }
 
+/** Los planes que la profesional puede copiar: el suyo y el de sus pacientes. */
+export async function planesParaCopiar(
+  sesion: Session | null,
+  pacientes: Paciente[],
+): Promise<Array<{ etiqueta: string; plan: NutritionPlan }>> {
+  const salida: Array<{ etiqueta: string; plan: NutritionPlan }> = [];
+  if (supabase && sesion) {
+    const { data } = await supabase
+      .from('plans').select('plan_versions(version, doc)')
+      .eq('patient_id', sesion.user.id).eq('is_active', true).limit(1).maybeSingle();
+    const versiones = (data?.['plan_versions'] ?? []) as Array<{ version: number; doc: NutritionPlan }>;
+    const propio = versiones.sort((a, b) => b.version - a.version)[0];
+    if (propio) salida.push({ etiqueta: 'Mi plan', plan: propio.doc });
+  }
+  for (const p of pacientes) {
+    if (p.plan) salida.push({ etiqueta: `Plan de ${p.nombre}`, plan: p.plan });
+  }
+  return salida;
+}
+
 /**
  * Publica una version nueva del plan. Las versiones no se editan: una version
  * publicada es el registro de que se indico y cuando, y los registros de
@@ -121,13 +141,25 @@ export async function publicarVersion(
     .from('plans').select('id, plan_versions(version)')
     .eq('patient_id', pacienteId).eq('is_active', true).limit(1).maybeSingle();
   if (e1) throw e1;
-  if (!fila) throw new Error('Esa persona todavía no tiene un plan activo.');
 
-  const versiones = (fila['plan_versions'] ?? []) as Array<{ version: number }>;
-  const siguiente = Math.max(0, ...versiones.map((v) => v.version)) + 1;
+  // Si todavia no tiene plan, se crea: asignarle uno no puede depender de que
+  // antes haya entrado a la app y se le haya sembrado algo.
+  let planId = fila?.['id'] as string | undefined;
+  let siguiente = 1;
+  if (fila) {
+    const versiones = (fila['plan_versions'] ?? []) as Array<{ version: number }>;
+    siguiente = Math.max(0, ...versiones.map((v) => v.version)) + 1;
+  } else {
+    const { data: nuevo, error: e2 } = await supabase
+      .from('plans')
+      .insert({ patient_id: pacienteId, author_id: sesion.user.id, name: plan.name, source: plan.source })
+      .select('id').single();
+    if (e2) throw e2;
+    planId = nuevo.id as string;
+  }
 
   const { error } = await supabase.from('plan_versions').insert({
-    plan_id: fila['id'],
+    plan_id: planId,
     version: siguiente,
     doc: plan,
     author_id: sesion.user.id,
@@ -138,9 +170,7 @@ export async function publicarVersion(
 
 function nombreDe(perfil: unknown): string | null {
   if (Array.isArray(perfil)) return nombreDe(perfil[0]);
-  if (perfil && typeof perfil === 'object' && 'display_name' in perfil) {
-    const n = (perfil as { display_name: unknown }).display_name;
-    return typeof n === 'string' ? n : null;
-  }
-  return null;
+  if (!perfil || typeof perfil !== 'object') return null;
+  const p = perfil as { display_name?: unknown };
+  return typeof p.display_name === 'string' && p.display_name ? p.display_name : null;
 }

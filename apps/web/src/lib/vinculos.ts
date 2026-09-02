@@ -23,6 +23,28 @@ function db(sesion: Session | null) {
   return supabase;
 }
 
+/**
+ * Guarda quien es esta persona, para que del otro lado se vea un nombre.
+ *
+ * Sin esto una invitacion dice "Tu nutricionista" y una lista de pacientes son
+ * emails: con mas de un profesional, aceptar sin saber quien pide es aceptar a
+ * ciegas sobre datos de salud.
+ */
+export async function registrarPerfil(sesion: Session | null): Promise<void> {
+  if (!supabase || !sesion) return;
+  const meta = sesion.user.user_metadata as Record<string, unknown>;
+  const nombre = [meta['full_name'], meta['name']].find((v) => typeof v === 'string' && v);
+
+  await supabase.from('profiles').upsert({
+    id: sesion.user.id,
+    ...(nombre ? { display_name: nombre as string } : {}),
+    email: sesion.user.email ?? null,
+    // La zona horaria del dispositivo: el cron la usa para calcular el dia
+    // local de cada persona y avisar a la hora que corresponde.
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  }, { onConflict: 'id' });
+}
+
 /** Ata las invitaciones dirigidas al email de quien entra. */
 export async function reclamarInvitaciones(sesion: Session | null): Promise<number> {
   if (!supabase || !sesion) return 0;
@@ -52,7 +74,7 @@ export async function misVinculos(sesion: Session | null): Promise<Vinculo[]> {
   const cliente = db(sesion);
   const { data, error } = await cliente
     .from('care_relationships')
-    .select('id, status, accepted_at, professional_id, profiles!care_relationships_professional_id_fkey(display_name)')
+    .select('id, status, accepted_at, professional_id, profiles!care_relationships_professional_id_fkey(display_name, email)')
     .eq('patient_id', sesion!.user.id)
     .neq('status', 'revoked');
   if (error) throw error;
@@ -60,7 +82,7 @@ export async function misVinculos(sesion: Session | null): Promise<Vinculo[]> {
   return (data ?? []).map((v) => ({
     id: v['id'] as string,
     estado: v['status'] as EstadoVinculo,
-    contraparte: nombreDe(v['profiles']) ?? 'Tu nutricionista',
+    contraparte: nombreDe(v['profiles']) ?? 'Alguien sin nombre cargado',
     desde: (v['accepted_at'] as string | null) ?? null,
   }));
 }
@@ -100,11 +122,12 @@ export async function invitarPaciente(sesion: Session | null, email: string): Pr
   }
 }
 
+/** El nombre si lo hay; si no, el email, que al menos identifica. */
 function nombreDe(perfil: unknown): string | null {
   if (Array.isArray(perfil)) return nombreDe(perfil[0]);
-  if (perfil && typeof perfil === 'object' && 'display_name' in perfil) {
-    const n = (perfil as { display_name: unknown }).display_name;
-    return typeof n === 'string' ? n : null;
-  }
+  if (!perfil || typeof perfil !== 'object') return null;
+  const p = perfil as { display_name?: unknown; email?: unknown };
+  if (typeof p.display_name === 'string' && p.display_name) return p.display_name;
+  if (typeof p.email === 'string' && p.email) return p.email;
   return null;
 }

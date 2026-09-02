@@ -15,7 +15,7 @@ import { Registro } from './pantallas/Registro.tsx';
 import { Ajustes } from './pantallas/Ajustes.tsx';
 import { Bienvenida } from './pantallas/Bienvenida.tsx';
 import { Pacientes } from './pantallas/Pacientes.tsx';
-import { esProfesional as consultarProfesional } from './lib/vinculos.ts';
+import { esProfesional as consultarProfesional, registrarPerfil } from './lib/vinculos.ts';
 import { escucharPlan } from './lib/envivo.ts';
 import { hayBackend } from './lib/supabase.ts';
 
@@ -120,6 +120,7 @@ export function App() {
 
   useEffect(() => {
     if (!sesion) return;
+    void registrarPerfil(sesion).catch(() => { /* se reintenta en el próximo ingreso */ });
     void consultarProfesional(sesion).then(setProfesional).catch(() => setProfesional(false));
   }, [sesion]);
 

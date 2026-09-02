@@ -3,6 +3,7 @@ import { comidasLibres, nombresSlot } from '../lib/datos.ts';
 import { Aviso } from '../componentes/Aviso.tsx';
 import { Seccion } from '../componentes/Seccion.tsx';
 import { Encabezado } from '../componentes/Encabezado.tsx';
+import { esPlanDeEjemplo } from '../lib/semilla.ts';
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -22,6 +23,15 @@ export function Plan({ plan, config }: { plan: NutritionPlan; config: UserConfig
   return (
     <>
       <Encabezado eyebrow={plan.name} titulo="Tu plan" />
+
+      {esPlanDeEjemplo(plan) && (
+        <div className="arreglo">
+          <p>
+            Este es un <b>plan de ejemplo</b> para conocer la app. Cuando tu nutricionista
+            publique el tuyo, aparece acá solo.
+          </p>
+        </div>
+      )}
 
       <Seccion
         titulo="Cómo se arma cada comida"

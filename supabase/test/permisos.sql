@@ -8,10 +8,10 @@ insert into auth.users (id, email) values
   ('22222222-2222-2222-2222-222222222222', 'nutri@ejemplo.com'),
   ('33333333-3333-3333-3333-333333333333', 'ajeno@ejemplo.com');
 
-insert into public.profiles (id, display_name, is_professional) values
-  ('11111111-1111-1111-1111-111111111111', 'Paciente', false),
-  ('22222222-2222-2222-2222-222222222222', 'Nutricionista', true),
-  ('33333333-3333-3333-3333-333333333333', 'Ajeno', true);
+insert into public.profiles (id, display_name, email, is_professional) values
+  ('11111111-1111-1111-1111-111111111111', 'Paciente', 'paciente@ejemplo.com', false),
+  ('22222222-2222-2222-2222-222222222222', 'Nutricionista', 'nutri@ejemplo.com', true),
+  ('33333333-3333-3333-3333-333333333333', 'Ajeno', 'ajeno@ejemplo.com', true);
 
 insert into public.plans (id, patient_id, author_id, name) values
   ('aaaaaaaa-0000-0000-0000-000000000001',
@@ -131,3 +131,23 @@ select pruebas.check('reclamar no concede acceso por si solo',
 select set_config('test.uid', '33333333-3333-3333-3333-333333333333', false);
 select pruebas.check('reclamada pero sin aceptar, sigue sin ver nada',
   public.has_care_access('11111111-1111-1111-1111-111111111111'), false);
+
+-- 10. Con varias nutricionistas hay que poder distinguirlas: el paciente ve el
+--     nombre de quien le pide acceso ANTES de concederlo.
+set role authenticated;
+select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
+select pruebas.check('el paciente ve el nombre de quien lo invito, aun sin aceptar',
+  (select display_name from public.profiles
+   where id = '33333333-3333-3333-3333-333333333333') = 'Ajeno', true);
+
+select pruebas.check('pero no ve el perfil de un desconocido',
+  exists (select 1 from public.profiles p
+          where p.id not in ('11111111-1111-1111-1111-111111111111',
+                             '22222222-2222-2222-2222-222222222222',
+                             '33333333-3333-3333-3333-333333333333')), false);
+
+-- Un profesional NO puede ver el perfil de otro solo por existir.
+select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+select pruebas.check('una profesional no ve el perfil de otra',
+  exists (select 1 from public.profiles
+          where id = '33333333-3333-3333-3333-333333333333'), false);
