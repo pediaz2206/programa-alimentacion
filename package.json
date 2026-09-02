@@ -10,7 +10,7 @@
   "scripts": {
     "test": "node scripts/check-node.mjs && node --experimental-strip-types --test packages/core/test/*.test.ts",
     "hoy": "node scripts/check-node.mjs && node --experimental-strip-types packages/core/src/cli.ts",
-    "typecheck": "tsc",
+    "typecheck": "tsc && tsc -p tsconfig.netlify.json && tsc -b apps/web",
     "check": "npm run typecheck && npm test",
     "vista": "node scripts/check-node.mjs && node --experimental-strip-types scripts/build-vista.ts",
     "test:db": "bash supabase/test/correr.sh",

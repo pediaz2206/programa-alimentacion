@@ -1,6 +1,6 @@
 import type { Config } from '@netlify/functions';
-import { createClient } from '@supabase/supabase-js';
-import webpush from 'web-push';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { enviarA, prepararEntorno } from '../lib/push.mts';
 import { buildDaySchedule } from '../../packages/core/src/schedule.ts';
 import { claveEvento, eventsDue, notificacionDe } from '../../packages/core/src/notificaciones.ts';
 import type { NutritionPlan, UserConfig } from '../../packages/core/src/types.ts';
@@ -21,38 +21,24 @@ import type { NutritionPlan, UserConfig } from '../../packages/core/src/types.ts
 const VENTANA_MINUTOS = 5;
 
 export default async (): Promise<Response> => {
-  const url = process.env['SUPABASE_URL'];
-  const service = process.env['SUPABASE_SERVICE_ROLE_KEY'];
-  const publica = process.env['VAPID_PUBLIC_KEY'];
-  const privada = process.env['VAPID_PRIVATE_KEY'];
-  const sujeto = process.env['VAPID_SUBJECT'] ?? 'mailto:hola@en-punto.app';
+  const entorno = prepararEntorno();
+  if ('error' in entorno) return Response.json({ error: entorno.error }, { status: 500 });
+  const { db } = entorno;
 
-  if (!url || !service || !publica || !privada) {
-    return Response.json({ error: 'Faltan variables de entorno del cron.' }, { status: 500 });
-  }
-  webpush.setVapidDetails(sujeto, publica, privada);
-
-  // service_role saltea RLS: el cron necesita leer los datos de todos para
-  // decidir a quien avisar. Es la unica pieza que corre con esa clave.
-  const db = createClient(url, service, { auth: { persistSession: false } });
-
+  // Solo interesan las personas con al menos un dispositivo suscrito: al resto
+  // no hay a donde avisarles.
   const { data: suscripciones, error } = await db
     .from('push_subscriptions')
-    .select('id, owner_id, endpoint, p256dh, auth')
+    .select('owner_id')
     .eq('is_active', true);
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
-  const porUsuario = new Map<string, typeof suscripciones>();
-  for (const s of suscripciones ?? []) {
-    const lista = porUsuario.get(s.owner_id) ?? [];
-    lista.push(s);
-    porUsuario.set(s.owner_id, lista);
-  }
+  const usuarios = [...new Set((suscripciones ?? []).map((s) => s['owner_id'] as string))];
 
   let enviadas = 0;
   let saltadas = 0;
 
-  for (const [uid, subs] of porUsuario) {
+  for (const uid of usuarios) {
     const contexto = await datosDe(db, uid);
     if (!contexto) continue;
     const { plan, config, zona } = contexto;
@@ -75,34 +61,16 @@ export default async (): Promise<Response> => {
         .insert({ owner_id: uid, local_date: fechaLocal, event_key: clave });
       if (yaEnviada) { saltadas++; continue; }
 
-      const payload = JSON.stringify(notificacionDe(evento));
-      for (const s of subs) {
-        try {
-          await webpush.sendNotification(
-            { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-            payload,
-          );
-          enviadas++;
-          await db.from('push_subscriptions')
-            .update({ last_ok_at: new Date().toISOString() }).eq('id', s.id);
-        } catch (e) {
-          // 404/410 significa que el endpoint murio: el navegador se
-          // desinstalo o el permiso se revoco. Se desactiva en vez de
-          // reintentar para siempre.
-          const codigo = (e as { statusCode?: number }).statusCode;
-          if (codigo === 404 || codigo === 410) {
-            await db.from('push_subscriptions').update({ is_active: false }).eq('id', s.id);
-          }
-        }
-      }
+      const resultado = await enviarA(db, uid, notificacionDe(evento));
+      enviadas += resultado.enviadas;
     }
   }
 
-  return Response.json({ enviadas, saltadas, usuarios: porUsuario.size });
+  return Response.json({ enviadas, saltadas, usuarios: usuarios.length });
 };
 
 async function datosDe(
-  db: ReturnType<typeof createClient>,
+  db: SupabaseClient,
   uid: string,
 ): Promise<{ plan: NutritionPlan; config: UserConfig; zona: string } | null> {
   const { data: perfil } = await db
@@ -128,7 +96,9 @@ async function datosDe(
   return {
     plan,
     config: config['doc'] as UserConfig,
-    zona: (perfil?.['timezone'] as string) ?? 'America/Argentina/Buenos_Aires',
+    zona: typeof perfil?.['timezone'] === 'string'
+      ? perfil['timezone']
+      : 'America/Argentina/Buenos_Aires',
   };
 }
 

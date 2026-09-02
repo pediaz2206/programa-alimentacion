@@ -98,3 +98,21 @@ export async function desactivarNotificaciones(): Promise<void> {
     await supabase.from('push_subscriptions').update({ is_active: false }).eq('endpoint', endpoint);
   }
 }
+
+/**
+ * Pide al servidor una notificacion de prueba.
+ *
+ * Activar los recordatorios sin poder probarlos es un acto de fe: con el cron
+ * cada 5 minutos, confirmar que funcionan puede llevar horas.
+ */
+export async function enviarPrueba(sesion: Session | null): Promise<void> {
+  if (!sesion) throw new Error('Entrá con Google para probar los recordatorios.');
+  const respuesta = await fetch('/.netlify/functions/probar-push', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${sesion.access_token}` },
+  });
+  if (!respuesta.ok) {
+    const cuerpo = await respuesta.json().catch(() => null);
+    throw new Error(cuerpo?.error ?? `El servidor respondió ${respuesta.status}.`);
+  }
+}

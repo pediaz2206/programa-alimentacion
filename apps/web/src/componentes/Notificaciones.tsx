@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
-  activarNotificaciones, desactivarNotificaciones, esIOS, estadoPush, type EstadoPush,
+  activarNotificaciones, desactivarNotificaciones, enviarPrueba, esIOS, estadoPush,
+  type EstadoPush,
 } from '../lib/push.ts';
 
 /**
@@ -15,6 +16,8 @@ export function Notificaciones({ sesion }: { sesion: Session | null }) {
   const [estado, setEstado] = useState<EstadoPush>('sin-soporte');
   const [error, setError] = useState<string | null>(null);
   const [pidiendo, setPidiendo] = useState(false);
+  const [probando, setProbando] = useState(false);
+  const [probada, setProbada] = useState(false);
 
   useEffect(() => { setEstado(estadoPush()); }, []);
 
@@ -94,6 +97,27 @@ export function Notificaciones({ sesion }: { sesion: Session | null }) {
             Vas a recibir el aviso de ingredientes antes de cocinar, el recordatorio de cada
             comida y los límites de tu ventana de ayuno.
           </p>
+          <button
+            className="boton boton-lleno boton-ancho"
+            disabled={probando}
+            onClick={() => {
+              setProbando(true);
+              setError(null);
+              setProbada(false);
+              enviarPrueba(sesion)
+                .then(() => setProbada(true))
+                .catch((e: unknown) => setError(e instanceof Error ? e.message : 'No se pudo enviar.'))
+                .finally(() => setProbando(false));
+            }}
+          >
+            {probando ? 'Enviando…' : 'Enviar una de prueba'}
+          </button>
+          {probada && (
+            <p className="nota" style={{ color: 'var(--verde)' }}>
+              Enviada. Si no llega en unos segundos, revisá que las notificaciones estén
+              permitidas en el sistema, no solo en el navegador.
+            </p>
+          )}
           <button
             className="boton boton-ancho"
             onClick={() => void desactivarNotificaciones().then(() => setEstado(estadoPush()))}
