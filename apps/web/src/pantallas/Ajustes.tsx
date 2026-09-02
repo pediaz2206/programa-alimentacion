@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { NutritionPlan, UserConfig } from '@pa/core';
 import { entrarConGoogle, hayBackend, salir } from '../lib/supabase.ts';
 import { nombresSlot } from '../lib/datos.ts';
+import { Notificaciones } from '../componentes/Notificaciones.tsx';
 
 interface Props {
   plan: NutritionPlan;
@@ -84,6 +85,8 @@ export function Ajustes({ plan, config, onConfig, tema, onTema, sesion }: Props)
           </p>
         </section>
       )}
+
+      <Notificaciones sesion={sesion} />
 
       <section className="tarjeta">
         <h3 className="encabezado-seccion" style={{ margin: 0 }}>Apariencia</h3>

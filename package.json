@@ -15,14 +15,22 @@
     "vista": "node scripts/check-node.mjs && node --experimental-strip-types scripts/build-vista.ts",
     "test:db": "bash supabase/test/correr.sh",
     "dev": "npm run dev --workspace @pa/web",
-    "build": "npm run build --workspace @pa/web"
+    "build": "npm run build --workspace @pa/web",
+    "verificar": "node scripts/verificar-supabase.mjs",
+    "vapid": "node scripts/vapid.mjs"
   },
   "engines": {
     "node": ">=22.6"
   },
   "devDependencies": {
+    "@netlify/functions": "^6.0.0",
     "@types/node": "^26.4.1",
+    "@types/web-push": "^3.6.4",
     "typescript": "^5.9.3"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.113.0",
+    "web-push": "^3.6.7"
+  }
 }

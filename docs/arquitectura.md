@@ -66,6 +66,20 @@ de las 12:30 puede llegar 12:34. Aceptable para comidas. Si hiciera falta precis
 minuto, la alternativa es `pg_cron` + `pg_net` dentro de Supabase, que no depende del
 plan de Netlify.
 
+Dos propiedades que hacen que esto sea confiable, y que estan probadas en el motor:
+
+- **Ningun evento se pierde ni se duplica.** `eventsDue()` usa una ventana semiabierta
+  al inicio, `(desde, hasta]`, para no reenviar el evento que ya salio en la corrida
+  anterior. Un test simula el cron corriendo cada 5 minutos durante 24 h y verifica que
+  cada evento del dia se notifique exactamente una vez.
+- **La notificacion nunca dice algo distinto a la pantalla.** El cron llama a
+  `buildDaySchedule()`, la misma funcion pura que usa la app. Si la logica viviera
+  duplicada en el servidor, las dos se desincronizarian.
+
+La idempotencia frente a corridas solapadas la da `notification_log`: su clave primaria
+compuesta hace que el segundo intento de insertar el mismo evento falle, y el envio se
+saltea. Es mas barato que coordinar corridas.
+
 Referencias: [Netlify Scheduled Functions](https://docs.netlify.com/build/functions/scheduled-functions/),
 [requisitos de Web Push en iOS](https://pushpad.xyz/blog/ios-special-requirements-for-web-push-notifications).
 
@@ -141,7 +155,9 @@ revocar oculte tambien las fotos, y que un profesional ajeno nunca vea nada.
 - [x] Vista HTML autocontenida (`npm run vista`)
 - [x] Esquema de Supabase con RLS
 - [ ] Transcripcion de los PDF reales al formato `NutritionPlan`
-- [ ] `apps/web` — PWA
-- [ ] Netlify Function de push + registro de suscripciones
-- [ ] Google SSO
+- [x] `apps/web` — PWA con cuatro pestañas
+- [x] Persistencia en Supabase con siembra en el primer ingreso
+- [x] Netlify Function de push + registro de suscripciones
+- [x] Google SSO
+- [ ] Pantalla de la nutricionista (ver el registro, publicar versiones del plan)
 - [ ] Modelo de dos roles (paciente / nutricionista) - ver seccion anterior
