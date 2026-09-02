@@ -17,6 +17,7 @@ import type { Registro } from './registro.ts';
 export interface Datos {
   plan: NutritionPlan;
   config: UserConfig;
+  planId: string | null;
   planVersionId: string | null;
   /** Los datos vienen de la copia local: hay algo que el servidor no confirmo. */
   desdeCache: boolean;
@@ -39,6 +40,7 @@ export async function cargarDatos(sesion: Session | null): Promise<Datos> {
     return {
       plan: copia.plan,
       config: copia.config,
+      planId: copia.planId,
       planVersionId: copia.planVersionId,
       desdeCache: true,
     };
@@ -69,6 +71,7 @@ async function traerDelServidor(uid: string): Promise<Omit<Datos, 'desdeCache'>>
   return {
     plan: (ultima?.doc as NutritionPlan) ?? planEmpaquetado,
     config: configs?.doc as UserConfig,
+    planId: fila.id as string,
     planVersionId: ultima?.id ?? null,
   };
 }
@@ -91,7 +94,10 @@ async function sembrar(uid: string): Promise<Omit<Datos, 'desdeCache'>> {
   if (e2) throw e2;
 
   await supabase!.from('configs').insert({ patient_id: uid, plan_id: plan.id, doc: configEmpaquetada });
-  return { plan: planEmpaquetado, config: configEmpaquetada, planVersionId: version.id };
+  return {
+    plan: planEmpaquetado, config: configEmpaquetada,
+    planId: plan.id as string, planVersionId: version.id as string,
+  };
 }
 
 export async function guardarConfig(sesion: Session | null, config: UserConfig): Promise<void> {

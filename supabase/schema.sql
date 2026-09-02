@@ -330,6 +330,19 @@ drop policy if exists notif_log_own on public.notification_log;
 create policy notif_log_own on public.notification_log
   for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 
+-- ------------------------------------------------------------- en vivo --
+
+-- Cuando la nutricionista publica una version, el telefono del paciente tiene
+-- que enterarse sin que nadie recargue. La suscripcion pasa igual por RLS:
+-- cada quien recibe solo los cambios que ya podia leer.
+do $$
+begin
+  alter publication supabase_realtime add table public.plan_versions;
+exception
+  when duplicate_object then null;   -- ya estaba
+  when undefined_object then null;   -- fuera de Supabase no existe la publicacion
+end $$;
+
 -- ----------------------------------------------------------- consultas --
 
 -- El plan vive como JSONB, que en Postgres es consultable con operadores y no

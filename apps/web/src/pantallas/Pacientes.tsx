@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import type { NutritionPlan } from '@pa/core';
+import { validatePlan, type NutritionPlan } from '@pa/core';
 import {
   metricasDe, misPacientes, publicarVersion, type Metricas, type Paciente,
 } from '../lib/profesional.ts';
@@ -130,6 +130,7 @@ function Detalle({ paciente, sesion, onVolver }: {
       </Seccion>
 
       {paciente.plan && <EditarPlan paciente={paciente} sesion={sesion} />}
+      <SubirPlan paciente={paciente} sesion={sesion} />
     </>
   );
 }
@@ -252,6 +253,95 @@ function EditarPlan({ paciente, sesion }: { paciente: Paciente; sesion: Session 
               onClick={() => void publicar()}>
         {guardando ? 'Publicando…' : listo ? 'Publicada' : 'Publicar versión nueva'}
       </button>
+      {error && <Aviso texto={error} />}
+    </Seccion>
+  );
+}
+
+/**
+ * Reemplazar el plan entero por uno transcrito de un PDF nuevo.
+ *
+ * Se valida ANTES de publicar, con el mismo validador que usa el motor: un
+ * plan con un momento sin opciones o un grupo inexistente no rompe al
+ * publicarse, rompe despues, en el telefono de alguien y a la hora de comer.
+ */
+function SubirPlan({ paciente, sesion }: { paciente: Paciente; sesion: Session | null }) {
+  const archivo = useRef<HTMLInputElement>(null);
+  const [candidato, setCandidato] = useState<NutritionPlan | null>(null);
+  const [problemas, setProblemas] = useState<string[]>([]);
+  const [nota, setNota] = useState('');
+  const [estado, setEstado] = useState<'listo' | 'publicando' | 'publicado'>('listo');
+  const [error, setError] = useState<string | null>(null);
+
+  function leer(f: File) {
+    setError(null);
+    setCandidato(null);
+    setProblemas([]);
+    f.text()
+      .then((texto) => {
+        const plan = JSON.parse(texto) as NutritionPlan;
+        const errores = validatePlan(plan);
+        setProblemas(errores);
+        if (errores.length === 0) setCandidato(plan);
+      })
+      .catch(() => setError('Ese archivo no es un plan válido en formato JSON.'));
+  }
+
+  return (
+    <Seccion titulo="Subir un plan nuevo" resumen="Reemplaza el plan completo">
+      <p className="nota">
+        Un archivo JSON con el plan transcrito. Se valida antes de publicarse: si algo
+        está mal se avisa acá y no llega al teléfono de nadie.
+      </p>
+
+      <input ref={archivo} type="file" accept="application/json,.json" hidden
+             onChange={(e) => { const f = e.target.files?.[0]; if (f) leer(f); }} />
+      <button className="boton boton-ancho" onClick={() => archivo.current?.click()}>
+        Elegir archivo
+      </button>
+
+      {problemas.length > 0 && (
+        <>
+          <Aviso texto={`El plan tiene ${problemas.length} ${problemas.length === 1 ? 'problema' : 'problemas'}. No se puede publicar así.`} />
+          <ul className="eq-lista">
+            {problemas.slice(0, 8).map((p, n) => (
+              <li key={n}><span style={{ fontSize: 12.5 }}>{p}</span></li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {candidato && (
+        <>
+          <p className="nota">
+            <b>{candidato.name}</b> — {candidato.foodGroups.length} grupos,{' '}
+            {candidato.options.length} opciones, {candidato.slots.length} momentos.
+          </p>
+          <div className="campo">
+            <label htmlFor="nota-plan">Por qué cambia</label>
+            <input id="nota-plan" type="text" value={nota} placeholder="plan de septiembre"
+                   onChange={(e) => setNota(e.target.value)}
+                   style={{ font: 'inherit', fontSize: 14, padding: '6px 9px', borderRadius: 8,
+                            border: '1px solid var(--linea)', background: 'var(--superficie)',
+                            color: 'var(--tinta)', maxWidth: 190 }} />
+          </div>
+          <button className="boton boton-lleno boton-ancho" disabled={estado !== 'listo'}
+                  onClick={() => {
+                    setEstado('publicando');
+                    publicarVersion(sesion, paciente.id, candidato, nota)
+                      .then(() => setEstado('publicado'))
+                      .catch((e: unknown) => {
+                        setError(e instanceof Error ? e.message : 'No se pudo publicar.');
+                        setEstado('listo');
+                      });
+                  }}>
+            {estado === 'publicando' ? 'Publicando…'
+              : estado === 'publicado' ? 'Publicado — ya le aparece en la app'
+              : 'Publicar este plan'}
+          </button>
+        </>
+      )}
+
       {error && <Aviso texto={error} />}
     </Seccion>
   );

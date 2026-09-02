@@ -16,6 +16,7 @@ import { Ajustes } from './pantallas/Ajustes.tsx';
 import { Bienvenida } from './pantallas/Bienvenida.tsx';
 import { Pacientes } from './pantallas/Pacientes.tsx';
 import { esProfesional as consultarProfesional } from './lib/vinculos.ts';
+import { escucharPlan } from './lib/envivo.ts';
 import { hayBackend } from './lib/supabase.ts';
 
 type Pestana = 'hoy' | 'plan' | 'registro' | 'pacientes' | 'ajustes';
@@ -42,7 +43,8 @@ export function App() {
   // parpadeo de la pantalla de login en cada carga.
   const [sesionResuelta, setSesionResuelta] = useState(!hayBackend);
   const [datos, setDatos] = useState<Datos>({
-    plan: planEmpaquetado, config: configEmpaquetada, planVersionId: null, desdeCache: false,
+    plan: planEmpaquetado, config: configEmpaquetada,
+    planId: null, planVersionId: null, desdeCache: false,
   });
   const [enLinea, setEnLinea] = useState(() => navigator.onLine);
   const [sinEnviar, setSinEnviar] = useState(0);
@@ -120,6 +122,16 @@ export function App() {
     if (!sesion) return;
     void consultarProfesional(sesion).then(setProfesional).catch(() => setProfesional(false));
   }, [sesion]);
+
+  // Lo que publica la nutricionista aparece sin recargar.
+  useEffect(() => {
+    if (!sesion) return;
+    return escucharPlan(sesion, datos.planId, () => {
+      void cargarDatos(sesion).then((d) => {
+        setDatos((previo) => (d.planVersionId === previo.planVersionId ? previo : d));
+      }).catch(() => { /* sin red: sigue la copia local */ });
+    });
+  }, [sesion, datos.planId]);
 
   const eventos = useMemo(
     () => agendaDe(datos.plan, datos.config, new Date()),

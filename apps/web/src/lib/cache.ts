@@ -14,6 +14,7 @@ import type { Registro } from './registro.ts';
 export interface Cacheado {
   plan: NutritionPlan;
   config: UserConfig;
+  planId: string | null;
   planVersionId: string | null;
   guardadoEn: number;
 }
