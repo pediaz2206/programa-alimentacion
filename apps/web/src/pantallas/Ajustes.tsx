@@ -5,6 +5,7 @@ import { nombresSlot } from '../lib/datos.ts';
 import { Notificaciones } from '../componentes/Notificaciones.tsx';
 import { Vinculos } from '../componentes/Vinculo.tsx';
 import { Encabezado } from '../componentes/Encabezado.tsx';
+import { Avatar } from '../componentes/Avatar.tsx';
 
 interface Props {
   plan: NutritionPlan;
@@ -15,6 +16,18 @@ interface Props {
   sesion: Session | null;
   esProfesional: boolean;
   onEsProfesional: (v: boolean) => void;
+}
+
+function nombreDeSesion(sesion: Session): string {
+  const meta = sesion.user.user_metadata as Record<string, unknown>;
+  const nombre = [meta['full_name'], meta['name']].find((v) => typeof v === 'string' && v);
+  return (nombre as string) ?? sesion.user.email ?? 'Vos';
+}
+
+function fotoDeSesion(sesion: Session): string | null {
+  const meta = sesion.user.user_metadata as Record<string, unknown>;
+  const foto = [meta['avatar_url'], meta['picture']].find((v) => typeof v === 'string' && v);
+  return (foto as string) ?? null;
 }
 
 /** El cierre no se guarda: se deriva del inicio y la duración. */
@@ -143,7 +156,17 @@ export function Ajustes({ plan, config, onConfig, tema, onTema, sesion, esProfes
           </p>
         ) : sesion ? (
           <>
-            <p className="nota">Sesión iniciada como <b>{sesion.user.email}</b>.</p>
+            <div className="con-avatar">
+              <Avatar
+                nombre={nombreDeSesion(sesion)}
+                foto={fotoDeSesion(sesion)}
+                tamano={44}
+              />
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>{nombreDeSesion(sesion)}</div>
+                <div className="nota">{sesion.user.email}</div>
+              </div>
+            </div>
             <button className="boton boton-ancho" onClick={() => void salir()}>Cerrar sesión</button>
           </>
         ) : (

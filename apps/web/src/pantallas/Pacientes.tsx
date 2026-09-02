@@ -9,6 +9,7 @@ import { invitarPaciente } from '../lib/vinculos.ts';
 import { Seccion } from '../componentes/Seccion.tsx';
 import { Aviso } from '../componentes/Aviso.tsx';
 import { Encabezado } from '../componentes/Encabezado.tsx';
+import { Avatar } from '../componentes/Avatar.tsx';
 
 export function Pacientes({ sesion }: { sesion: Session | null }) {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
@@ -71,7 +72,10 @@ function FilaPaciente({ paciente, onAbrir }: { paciente: Paciente; onAbrir: () =
   return (
     <button className="tarjeta paciente" onClick={onAbrir}>
       <div className="paciente-tope">
-        <span className="paciente-nombre">{paciente.nombre}</span>
+        <span className="con-avatar">
+          <Avatar nombre={paciente.nombre} foto={paciente.foto} />
+          <span className="paciente-nombre">{paciente.nombre}</span>
+        </span>
         {m && <Semaforo porcentaje={m.adherencia.porcentaje} />}
       </div>
       {m ? (
@@ -105,7 +109,11 @@ function Detalle({ paciente, pacientes, sesion, onVolver }: {
         Pacientes
       </button>
 
-      <Encabezado eyebrow={paciente.email} titulo={paciente.nombre} />
+      <Encabezado
+        eyebrow={paciente.email}
+        titulo={paciente.nombre}
+        extra={<Avatar nombre={paciente.nombre} foto={paciente.foto} tamano={46} />}
+      />
 
       {m ? <Panel metricas={m} /> : (
         <section className="tarjeta"><p className="vacio">Sin plan activo.</p></section>

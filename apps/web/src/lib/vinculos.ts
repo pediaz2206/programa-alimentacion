@@ -15,6 +15,7 @@ export interface Vinculo {
   estado: EstadoVinculo;
   /** Nombre o email de la otra parte. */
   contraparte: string;
+  foto: string | null;
   desde: string | null;
 }
 
@@ -34,10 +35,13 @@ export async function registrarPerfil(sesion: Session | null): Promise<void> {
   if (!supabase || !sesion) return;
   const meta = sesion.user.user_metadata as Record<string, unknown>;
   const nombre = [meta['full_name'], meta['name']].find((v) => typeof v === 'string' && v);
+  // Google usa avatar_url; otros proveedores, picture.
+  const foto = [meta['avatar_url'], meta['picture']].find((v) => typeof v === 'string' && v);
 
   await supabase.from('profiles').upsert({
     id: sesion.user.id,
     ...(nombre ? { display_name: nombre as string } : {}),
+    ...(foto ? { avatar_url: foto as string } : {}),
     email: sesion.user.email ?? null,
     // La zona horaria del dispositivo: el cron la usa para calcular el dia
     // local de cada persona y avisar a la hora que corresponde.
@@ -74,7 +78,7 @@ export async function misVinculos(sesion: Session | null): Promise<Vinculo[]> {
   const cliente = db(sesion);
   const { data, error } = await cliente
     .from('care_relationships')
-    .select('id, status, accepted_at, professional_id, profiles!care_relationships_professional_id_fkey(display_name, email)')
+    .select('id, status, accepted_at, professional_id, profiles!care_relationships_professional_id_fkey(display_name, email, avatar_url)')
     .eq('patient_id', sesion!.user.id)
     .neq('status', 'revoked');
   if (error) throw error;
@@ -83,6 +87,7 @@ export async function misVinculos(sesion: Session | null): Promise<Vinculo[]> {
     id: v['id'] as string,
     estado: v['status'] as EstadoVinculo,
     contraparte: nombreDe(v['profiles']) ?? 'Alguien sin nombre cargado',
+    foto: fotoDe(v['profiles']),
     desde: (v['accepted_at'] as string | null) ?? null,
   }));
 }
@@ -120,6 +125,13 @@ export async function invitarPaciente(sesion: Session | null, email: string): Pr
     // crudo de Postgres no le dice nada a nadie.
     throw new Error(error.code === '23505' ? 'Ya invitaste a esa persona.' : error.message);
   }
+}
+
+function fotoDe(perfil: unknown): string | null {
+  if (Array.isArray(perfil)) return fotoDe(perfil[0]);
+  if (!perfil || typeof perfil !== 'object') return null;
+  const url = (perfil as { avatar_url?: unknown }).avatar_url;
+  return typeof url === 'string' && url ? url : null;
 }
 
 /** El nombre si lo hay; si no, el email, que al menos identifica. */

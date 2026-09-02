@@ -5,6 +5,7 @@ import {
   revocarVinculo, type Vinculo as Dato,
 } from '../lib/vinculos.ts';
 import { Aviso } from './Aviso.tsx';
+import { Avatar } from './Avatar.tsx';
 
 /**
  * El control del paciente sobre quien ve sus datos.
@@ -39,7 +40,10 @@ export function Vinculos({ sesion, esProfesional, onEsProfesional }: {
     <>
       {pendientes.map((v) => (
         <section className="tarjeta destacada" key={v.id}>
-          <h3 style={{ fontSize: 17, fontWeight: 600 }}>{v.contraparte} quiere seguir tu plan</h3>
+          <div className="con-avatar">
+            <Avatar nombre={v.contraparte} foto={v.foto} tamano={44} />
+            <h3 style={{ fontSize: 17, fontWeight: 600 }}>{v.contraparte} quiere seguir tu plan</h3>
+          </div>
           <p className="nota">
             Si aceptás, va a ver tu registro de comidas, tus fotos y tu plan, y va a poder
             publicar versiones nuevas. <b>No</b> puede cambiar tus horarios ni tu registro.
@@ -64,13 +68,15 @@ export function Vinculos({ sesion, esProfesional, onEsProfesional }: {
           <p className="nota">Nadie más que vos.</p>
         ) : activos.map((v) => (
           <div className="campo" key={v.id}>
-            <label>
-              {v.contraparte}
+            <label className="con-avatar">
+              <Avatar nombre={v.contraparte} foto={v.foto} tamano={32} />
+              <span>{v.contraparte}
               {v.desde && (
                 <span className="nota" style={{ display: 'block' }}>
                   Desde el {new Date(v.desde).toLocaleDateString('es-AR')}
                 </span>
               )}
+              </span>
             </label>
             <button className="boton" onClick={() => void revocarVinculo(sesion, v.id).then(recargar)}>
               Cortar acceso

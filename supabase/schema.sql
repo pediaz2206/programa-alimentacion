@@ -15,6 +15,9 @@ create table if not exists public.profiles (
   -- Copiado de auth.users al entrar. Sirve de respaldo cuando el proveedor no
   -- da un nombre: aceptar una invitacion sin saber de quien es no es aceptar.
   email           text,
+  -- La foto de Google. Se guarda la URL y no la imagen: es de un tercero, la
+  -- sirve el, y si alguien cambia su foto se actualiza sola.
+  avatar_url      text,
   -- La zona horaria es critica: el cron calcula la agenda en el dia local de
   -- cada persona, no en UTC.
   timezone        text not null default 'America/Argentina/Buenos_Aires',

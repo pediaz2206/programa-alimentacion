@@ -16,6 +16,7 @@ export interface Paciente {
   id: string;
   nombre: string;
   email: string;
+  foto: string | null;
   plan: NutritionPlan | null;
   registros: ComidaRegistrada[];
 }
@@ -35,7 +36,7 @@ export async function misPacientes(sesion: Session | null): Promise<Paciente[]> 
 
   const { data: vinculos, error } = await supabase
     .from('care_relationships')
-    .select('id, patient_id, patient_email, profiles!care_relationships_patient_id_fkey(display_name, email)')
+    .select('id, patient_id, patient_email, profiles!care_relationships_patient_id_fkey(display_name, email, avatar_url)')
     .eq('professional_id', sesion.user.id)
     .eq('status', 'active')
     .not('patient_id', 'is', null);
@@ -84,6 +85,7 @@ export async function misPacientes(sesion: Session | null): Promise<Paciente[]> 
       id,
       nombre: nombreDe(v['profiles']) ?? email,
       email,
+      foto: fotoDe(v['profiles']),
       plan: planPorPaciente.get(id) ?? null,
       registros: logsPorPaciente.get(id) ?? [],
     };
@@ -173,4 +175,11 @@ function nombreDe(perfil: unknown): string | null {
   if (!perfil || typeof perfil !== 'object') return null;
   const p = perfil as { display_name?: unknown };
   return typeof p.display_name === 'string' && p.display_name ? p.display_name : null;
+}
+
+function fotoDe(perfil: unknown): string | null {
+  if (Array.isArray(perfil)) return fotoDe(perfil[0]);
+  if (!perfil || typeof perfil !== 'object') return null;
+  const url = (perfil as { avatar_url?: unknown }).avatar_url;
+  return typeof url === 'string' && url ? url : null;
 }
