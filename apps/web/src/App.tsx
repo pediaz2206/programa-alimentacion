@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import type { UserConfig } from '@pa/core';
-import { agendaDe, configInicial, minutosAhora } from './lib/datos.ts';
-import { leerRegistros, type Registro as Fila } from './lib/registro.ts';
+import { agendaDe, minutosAhora } from './lib/datos.ts';
+import { configEmpaquetada, planEmpaquetado } from './lib/semilla.ts';
+import {
+  borrarRegistro, cargarDatos, guardarConfig, guardarRegistro, listarRegistros, type Datos,
+} from './lib/repositorio.ts';
+import type { Registro as Fila } from './lib/registro.ts';
 import { supabase } from './lib/supabase.ts';
 import { Hoy } from './pantallas/Hoy.tsx';
 import { Plan } from './pantallas/Plan.tsx';
@@ -13,7 +16,6 @@ type Pestana = 'hoy' | 'plan' | 'registro' | 'ajustes';
 type Tema = 'claro' | 'oscuro';
 
 const CLAVE_TEMA = 'en-punto:tema';
-const CLAVE_CONFIG = 'en-punto:config:v1';
 
 const ICONOS: Record<Pestana, JSX.Element> = {
   hoy: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></>,
@@ -25,23 +27,23 @@ const NOMBRES: Record<Pestana, string> = { hoy: 'Hoy', plan: 'Plan', registro: '
 
 export function App() {
   const [pestana, setPestana] = useState<Pestana>('hoy');
-  const [tema, setTema] = useState<Tema>(() => leerTema());
-  const [config, setConfig] = useState<UserConfig>(() => leerConfig());
-  const [registros, setRegistros] = useState<Fila[]>(() => leerRegistros());
+  const [tema, setTema] = useState<Tema>(leerTema);
   const [sesion, setSesion] = useState<Session | null>(null);
-  // Se recalcula solo cada minuto: la agenda depende de la hora y una app de
-  // recordatorios que muestra una hora vieja no sirve para nada.
-  const [ahora, setAhora] = useState(() => minutosAhora());
+  const [datos, setDatos] = useState<Datos>({
+    plan: planEmpaquetado, config: configEmpaquetada, planVersionId: null,
+  });
+  const [registros, setRegistros] = useState<Fila[]>([]);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [ahora, setAhora] = useState(minutosAhora);
 
   useEffect(() => {
     document.documentElement.dataset['theme'] = tema === 'oscuro' ? 'dark' : 'light';
     try { localStorage.setItem(CLAVE_TEMA, tema); } catch { /* storage bloqueado */ }
   }, [tema]);
 
-  useEffect(() => {
-    try { localStorage.setItem(CLAVE_CONFIG, JSON.stringify(config)); } catch { /* idem */ }
-  }, [config]);
-
+  // La agenda depende de la hora: una app de recordatorios que muestra una
+  // hora vieja no sirve para nada.
   useEffect(() => {
     const id = setInterval(() => setAhora(minutosAhora()), 60_000);
     return () => clearInterval(id);
@@ -54,36 +56,100 @@ export function App() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const eventos = useMemo(() => agendaDe(config, new Date()), [config]);
+  // Al entrar o salir cambia la fuente de datos; el resto de la app no cambia.
+  useEffect(() => {
+    let vigente = true;
+    void (async () => {
+      try {
+        const [d, rs] = await Promise.all([cargarDatos(sesion), listarRegistros(sesion)]);
+        if (!vigente) return;
+        setDatos(d);
+        setRegistros(rs);
+        setError(null);
+      } catch (e) {
+        if (vigente) setError(mensaje(e));
+      }
+    })();
+    return () => { vigente = false; };
+  }, [sesion]);
+
+  const eventos = useMemo(
+    () => agendaDe(datos.plan, datos.config, new Date()),
+    [datos.plan, datos.config],
+  );
+
+  async function alGuardar(r: Fila) {
+    setGuardando(true);
+    try {
+      setRegistros(await guardarRegistro(sesion, r, datos.planVersionId));
+      setError(null);
+    } catch (e) {
+      setError(mensaje(e));
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  async function alBorrar(fecha: string, slotId: string) {
+    try {
+      setRegistros(await borrarRegistro(sesion, fecha, slotId));
+    } catch (e) {
+      setError(mensaje(e));
+    }
+  }
 
   return (
     <div className="app">
       <main className="contenido">
+        {error && (
+          <div className="aviso">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M8 1.5l6.5 12h-13z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+              <path d="M8 6.2v3.4M8 11.6v.1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+            <span>{error}</span>
+          </div>
+        )}
+
         {pestana === 'hoy' && (
           <Hoy
+            plan={datos.plan}
             eventos={eventos}
             ahora={ahora}
-            config={config}
+            config={datos.config}
             registros={registros}
             onIrARegistro={() => setPestana('registro')}
           />
         )}
-        {pestana === 'plan' && <Plan config={config} />}
+        {pestana === 'plan' && <Plan plan={datos.plan} config={datos.config} />}
         {pestana === 'registro' && (
-          <Registro eventos={eventos} registros={registros} onCambio={setRegistros} />
+          <Registro
+            plan={datos.plan}
+            eventos={eventos}
+            registros={registros}
+            onGuardar={(r) => void alGuardar(r)}
+            onBorrar={(f, s) => void alBorrar(f, s)}
+            guardando={guardando}
+          />
         )}
         {pestana === 'ajustes' && (
-          <Ajustes config={config} onConfig={setConfig} tema={tema} onTema={setTema} sesion={sesion} />
+          <Ajustes
+            plan={datos.plan}
+            config={datos.config}
+            onConfig={(c) => {
+              setDatos((d) => ({ ...d, config: c }));
+              void guardarConfig(sesion, c).catch((e) => setError(mensaje(e)));
+            }}
+            tema={tema}
+            onTema={setTema}
+            sesion={sesion}
+          />
         )}
       </main>
 
       <nav className="barra" aria-label="Secciones">
         {(Object.keys(NOMBRES) as Pestana[]).map((p) => (
-          <button
-            key={p}
-            onClick={() => setPestana(p)}
-            aria-current={pestana === p ? 'page' : undefined}
-          >
+          <button key={p} onClick={() => setPestana(p)} aria-current={pestana === p ? 'page' : undefined}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               {ICONOS[p]}
             </svg>
@@ -103,10 +169,9 @@ function leerTema(): Tema {
   }
 }
 
-function leerConfig(): UserConfig {
-  try {
-    const crudo = localStorage.getItem(CLAVE_CONFIG);
-    if (crudo) return JSON.parse(crudo) as UserConfig;
-  } catch { /* storage bloqueado o JSON corrupto: se usa el de fabrica */ }
-  return configInicial;
+/** Los errores de red y de Supabase llegan con formas distintas. */
+function mensaje(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === 'object' && e && 'message' in e) return String((e as { message: unknown }).message);
+  return 'Algo falló al guardar. Los datos siguen en este dispositivo.';
 }

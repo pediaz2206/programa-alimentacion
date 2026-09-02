@@ -1,11 +1,12 @@
-import { describeFormula, type UserConfig } from '@pa/core';
-import { comidasLibres, NOMBRE_SLOT, plan } from '../lib/datos.ts';
+import { describeFormula, type NutritionPlan, type UserConfig } from '@pa/core';
+import { comidasLibres, nombresSlot } from '../lib/datos.ts';
 import { Aviso } from '../componentes/Aviso.tsx';
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-export function Plan({ config }: { config: UserConfig }) {
-  const libres = comidasLibres(config);
+export function Plan({ plan, config }: { plan: NutritionPlan; config: UserConfig }) {
+  const libres = comidasLibres(plan, config);
+  const NOMBRE_SLOT = nombresSlot(plan);
   const activos = new Set(config.slots.filter((s) => s.enabled !== false).map((s) => s.slotId));
   const slots = plan.slots.filter((s) => activos.size === 0 || activos.has(s.id));
 

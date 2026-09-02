@@ -1,4 +1,4 @@
-import type { MealOption } from '@pa/core';
+import type { MealOption, NutritionPlan } from '@pa/core';
 import { opcionPorId } from './datos.ts';
 
 /** Una comida registrada. Refleja la fila de `meal_logs` en Supabase. */
@@ -53,8 +53,8 @@ export function fechaISO(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export function opcionesDe(registros: Registro[]): MealOption[] {
+export function opcionesDe(plan: NutritionPlan, registros: Registro[]): MealOption[] {
   return registros
-    .map((r) => opcionPorId(r.optionId))
+    .map((r) => opcionPorId(plan, r.optionId))
     .filter((o): o is MealOption => o != null);
 }

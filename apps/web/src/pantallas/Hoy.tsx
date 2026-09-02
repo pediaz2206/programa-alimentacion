@@ -1,10 +1,11 @@
-import { humanizeMinutes, type ScheduledEvent, type UserConfig } from '@pa/core';
+import { humanizeMinutes, type NutritionPlan, type ScheduledEvent, type UserConfig } from '@pa/core';
 import { Dial } from '../componentes/Dial.tsx';
 import { Aviso } from '../componentes/Aviso.tsx';
 import { balanceDe } from '../lib/datos.ts';
 import { opcionesDe, type Registro } from '../lib/registro.ts';
 
 interface Props {
+  plan: NutritionPlan;
   eventos: ScheduledEvent[];
   ahora: number;
   config: UserConfig;
@@ -20,9 +21,9 @@ const ETIQUETA: Record<string, string> = {
   'fast-closing': 'Ventana',
 };
 
-export function Hoy({ eventos, ahora, config, registros, onIrARegistro }: Props) {
+export function Hoy({ plan, eventos, ahora, config, registros, onIrARegistro }: Props) {
   const proximo = eventos.find((e) => e.minutes > ahora);
-  const balance = balanceDe(opcionesDe(registros));
+  const balance = balanceDe(plan, opcionesDe(plan, registros));
   const hoy = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (

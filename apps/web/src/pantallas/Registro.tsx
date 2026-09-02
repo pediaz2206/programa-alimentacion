@@ -1,14 +1,15 @@
 import { useRef, useState } from 'react';
-import type { ScheduledEvent } from '@pa/core';
-import { balanceDe, NOMBRE_SLOT, opcionPorId, plan } from '../lib/datos.ts';
-import {
-  borrarRegistro, fechaISO, guardarRegistro, opcionesDe, type Registro as Fila,
-} from '../lib/registro.ts';
+import type { NutritionPlan, ScheduledEvent } from '@pa/core';
+import { balanceDe, nombresSlot, opcionPorId } from '../lib/datos.ts';
+import { fechaISO, opcionesDe, type Registro as Fila } from '../lib/registro.ts';
 
 interface Props {
+  plan: NutritionPlan;
   eventos: ScheduledEvent[];
   registros: Fila[];
-  onCambio: (rs: Fila[]) => void;
+  onGuardar: (r: Fila) => void;
+  onBorrar: (fecha: string, slotId: string) => void;
+  guardando: boolean;
 }
 
 /**
@@ -16,10 +17,11 @@ interface Props {
  * foto se guarda como DataURL en el navegador; con backend pasa a Storage y
  * aca queda la ruta.
  */
-export function Registro({ eventos, registros, onCambio }: Props) {
+export function Registro({ plan, eventos, registros, onGuardar, onBorrar, guardando }: Props) {
   const hoy = fechaISO();
+  const NOMBRE_SLOT = nombresSlot(plan);
   const [abierto, setAbierto] = useState<string | null>(null);
-  const balance = balanceDe(opcionesDe(registros.filter((r) => r.fecha === hoy)));
+  const balance = balanceDe(plan, opcionesDe(plan, registros.filter((r) => r.fecha === hoy)));
   const comidasDeHoy = eventos.filter((e) => e.kind === 'meal');
   const deHoy = new Map(registros.filter((r) => r.fecha === hoy).map((r) => [r.slotId, r]));
 
@@ -64,14 +66,17 @@ export function Registro({ eventos, registros, onCambio }: Props) {
 
             {fila ? (
               <FilaRegistrada
+                plan={plan}
                 fila={fila}
-                onBorrar={() => onCambio(borrarRegistro(hoy, e.slotId!))}
+                onBorrar={() => onBorrar(hoy, e.slotId!)}
               />
             ) : abierto === e.slotId ? (
               <Formulario
+                plan={plan}
                 evento={e}
+                guardando={guardando}
                 onCancelar={() => setAbierto(null)}
-                onGuardar={(r) => { onCambio(guardarRegistro(r)); setAbierto(null); }}
+                onGuardar={(r) => { onGuardar(r); setAbierto(null); }}
               />
             ) : (
               <button className="boton boton-ancho" onClick={() => setAbierto(e.slotId!)}>
@@ -103,8 +108,8 @@ export function Registro({ eventos, registros, onCambio }: Props) {
   );
 }
 
-function FilaRegistrada({ fila, onBorrar }: { fila: Fila; onBorrar: () => void }) {
-  const opcion = opcionPorId(fila.optionId);
+function FilaRegistrada({ plan, fila, onBorrar }: { plan: NutritionPlan; fila: Fila; onBorrar: () => void }) {
+  const opcion = opcionPorId(plan, fila.optionId);
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
@@ -120,8 +125,10 @@ function FilaRegistrada({ fila, onBorrar }: { fila: Fila; onBorrar: () => void }
   );
 }
 
-function Formulario({ evento, onGuardar, onCancelar }: {
+function Formulario({ plan, evento, guardando, onGuardar, onCancelar }: {
+  plan: NutritionPlan;
   evento: ScheduledEvent;
+  guardando: boolean;
   onGuardar: (r: Fila) => void;
   onCancelar: () => void;
 }) {
@@ -132,7 +139,7 @@ function Formulario({ evento, onGuardar, onCancelar }: {
   const inputFoto = useRef<HTMLInputElement>(null);
 
   const candidatas = plan.options.filter((o) => o.slotIds.includes(evento.slotId!));
-  const elegida = opcionPorId(optionId);
+  const elegida = opcionPorId(plan, optionId);
 
   function leerFoto(archivo: File) {
     const lector = new FileReader();
@@ -200,6 +207,7 @@ function Formulario({ evento, onGuardar, onCancelar }: {
         <button
           className="boton boton-lleno"
           style={{ flex: 2 }}
+          disabled={guardando}
           onClick={() => onGuardar({
             fecha: fechaISO(),
             slotId: evento.slotId!,
@@ -210,7 +218,7 @@ function Formulario({ evento, onGuardar, onCancelar }: {
             ...(foto ? { foto } : {}),
           })}
         >
-          Guardar
+          {guardando ? 'Guardando…' : 'Guardar'}
         </button>
       </div>
     </>

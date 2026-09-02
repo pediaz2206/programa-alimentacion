@@ -1,9 +1,10 @@
 import type { Session } from '@supabase/supabase-js';
-import type { UserConfig } from '@pa/core';
+import type { NutritionPlan, UserConfig } from '@pa/core';
 import { entrarConGoogle, hayBackend, salir } from '../lib/supabase.ts';
-import { NOMBRE_SLOT, plan } from '../lib/datos.ts';
+import { nombresSlot } from '../lib/datos.ts';
 
 interface Props {
+  plan: NutritionPlan;
   config: UserConfig;
   onConfig: (c: UserConfig) => void;
   tema: 'claro' | 'oscuro';
@@ -11,7 +12,8 @@ interface Props {
   sesion: Session | null;
 }
 
-export function Ajustes({ config, onConfig, tema, onTema, sesion }: Props) {
+export function Ajustes({ plan, config, onConfig, tema, onTema, sesion }: Props) {
+  const NOMBRE_SLOT = nombresSlot(plan);
   function cambiarHora(slotId: string, time: string) {
     onConfig({
       ...config,
