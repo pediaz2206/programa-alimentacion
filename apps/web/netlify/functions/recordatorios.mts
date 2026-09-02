@@ -1,9 +1,9 @@
 import type { Config } from '@netlify/functions';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { enviarA, prepararEntorno } from '../lib/push.mts';
-import { buildDaySchedule } from '../../packages/core/src/schedule.ts';
-import { claveEvento, eventsDue, notificacionDe } from '../../packages/core/src/notificaciones.ts';
-import type { NutritionPlan, UserConfig } from '../../packages/core/src/types.ts';
+import { buildDaySchedule } from '../../../../packages/core/src/schedule.ts';
+import { claveEvento, eventsDue, notificacionDe } from '../../../../packages/core/src/notificaciones.ts';
+import type { NutritionPlan, UserConfig } from '../../../../packages/core/src/types.ts';
 
 /**
  * El cron de recordatorios.

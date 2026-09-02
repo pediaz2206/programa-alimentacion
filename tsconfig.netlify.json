@@ -14,5 +14,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["netlify/**/*.mts", "packages/core/src/**/*.ts"]
+  "include": ["apps/web/netlify/**/*.mts", "packages/core/src/**/*.ts"]
 }

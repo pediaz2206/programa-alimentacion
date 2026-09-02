@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import webpush from 'web-push';
-import type { Notificacion } from '../../packages/core/src/notificaciones.ts';
+import type { Notificacion } from '../../../../packages/core/src/notificaciones.ts';
 
 /** Config compartida por las funciones que mandan push. */
 export interface Entorno {
