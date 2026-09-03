@@ -28,6 +28,23 @@ function exigirSesion(sesion: Session | null): Session {
   return sesion;
 }
 
+/**
+ * La copia local, sin red. Sirve para pintar la pantalla correcta desde el
+ * primer frame en vez de mostrar los datos empaquetados y corregirlos despues.
+ */
+export function datosCacheados(sesion: Session | null): Datos | null {
+  if (!sesion) return null;
+  const copia = cache.leerDatos(sesion.user.id);
+  if (!copia) return null;
+  return {
+    plan: copia.plan,
+    config: copia.config,
+    planId: copia.planId,
+    planVersionId: copia.planVersionId,
+    desdeCache: true,
+  };
+}
+
 export async function cargarDatos(sesion: Session | null): Promise<Datos> {
   const { user } = exigirSesion(sesion);
   try {
@@ -119,21 +136,28 @@ export async function guardarConfig(sesion: Session | null, config: UserConfig):
   const copia = cache.leerDatos(user.id);
   if (copia) cache.guardarDatos(user.id, { ...copia, config });
 
-  const plan = await planActivoDe(user.id, 'id');
-  // Antes esto era `return`: la funcion terminaba bien, quien llamaba creia que
-  // habia guardado, y no se escribia nada. Un exito silencioso es peor que un
-  // error, porque nadie lo investiga.
-  if (!plan) throw new Error('No encontré tu plan activo, así que no pude guardar el cambio.');
+  try {
+    const plan = await planActivoDe(user.id, 'id');
+    // Antes esto era `return`: la funcion terminaba bien, quien llamaba creia que
+    // habia guardado, y no se escribia nada. Un exito silencioso es peor que un
+    // error, porque nadie lo investiga.
+    if (!plan) throw new Error('No encontré tu plan activo, así que no pude guardar el cambio.');
 
-  const { data, error } = await supabase!.from('configs').upsert(
-    { patient_id: user.id, plan_id: plan['id'], doc: config, updated_at: new Date().toISOString() },
-    { onConflict: 'patient_id,plan_id' },
-  ).select('id');
-  if (error) throw error;
-  // Un upsert que no toca ninguna fila devuelve 200 y un arreglo vacio: sin
-  // esto, una politica de RLS que filtra en silencio se ve como un guardado.
-  if (!data || data.length === 0) {
-    throw new Error('El servidor aceptó el pedido pero no guardó nada.');
+    const { data, error } = await supabase!.from('configs').upsert(
+      { patient_id: user.id, plan_id: plan['id'], doc: config, updated_at: new Date().toISOString() },
+      { onConflict: 'patient_id,plan_id' },
+    ).select('id');
+    if (error) throw error;
+    // Un upsert que no toca ninguna fila devuelve 200 y un arreglo vacio: sin
+    // esto, una politica de RLS que filtra en silencio se ve como un guardado.
+    if (!data || data.length === 0) {
+      throw new Error('El servidor aceptó el pedido pero no guardó nada.');
+    }
+  } catch (e) {
+    // La pantalla ya revierte el cambio rechazado; si la copia local se
+    // quedara con el, la proxima carga lo volveria a mostrar como bueno.
+    if (copia) cache.guardarDatos(user.id, copia);
+    throw e;
   }
 }
 

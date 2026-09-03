@@ -235,6 +235,18 @@ h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0;
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   font-size: 13px; padding: 5px 0; border-bottom: 1px solid var(--linea);
 }
+/*
+ * Sin min-width, un flex item no baja de su contenido: "Lentejas, arvejas,
+ * porotos o garbanzos" empuja la cantidad fuera de la tarjeta en vez de
+ * partirse en dos lineas.
+ */
+/*
+ * Un flex item no baja de su ancho minimo salvo que se lo permitamos, y la
+ * cantidad de la derecha es nowrap: sin esto, un nombre largo empuja al
+ * numero fuera de la tarjeta en pantallas angostas.
+ */
+.eq-lista li > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.eq-lista li > :first-child ~ :last-child { flex: none; }
 .eq-lista li:last-child { border-bottom: 0; }
 .eq-prot { color: var(--g-proteinas); font-weight: 600; white-space: nowrap; }
 .eq-cant { color: var(--tenue); white-space: nowrap; }
@@ -554,6 +566,12 @@ button.ventana:focus-visible { outline: 2px solid var(--verde); outline-offset: 
   border-color: var(--verde); background: var(--verde-suave);
   color: var(--verde); font-weight: 600;
 }
+/*
+ * Safari mide un <button> por su ancho maximo aunque el texto pueda partirse,
+ * asi que un chip largo ("Lentejas, arvejas, porotos o garbanzos") se sale de
+ * la tarjeta en vez de ocupar dos lineas. Esto se lo impide en todos lados.
+ */
+.desvio-chip { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .desvio-chip:focus-visible { outline: 2px solid var(--verde); outline-offset: 1px; }
 .desvio-resumen {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;

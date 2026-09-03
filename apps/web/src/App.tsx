@@ -4,8 +4,8 @@ import type { ScheduledEvent, UserConfig } from '@pa/core';
 import { agendaDe, minutosAhora } from './lib/datos.ts';
 import { configEmpaquetada, planEmpaquetado } from './lib/semilla.ts';
 import {
-  borrarRegistro, cargarDatos, guardarConfig, guardarRegistro, listarRegistros,
-  pendientes as contarPendientes, sincronizar, type Datos,
+  borrarRegistro, cargarDatos, datosCacheados, guardarConfig, guardarRegistro,
+  listarRegistros, pendientes as contarPendientes, sincronizar, type Datos,
 } from './lib/repositorio.ts';
 import { fechaISO, type Registro as Fila } from './lib/registro.ts';
 import { supabase } from './lib/supabase.ts';
@@ -51,6 +51,11 @@ export function App() {
     plan: planEmpaquetado, config: configEmpaquetada,
     planId: null, planVersionId: null, desdeCache: false,
   });
+  // Hasta que no lleguen los datos de esta persona, lo unico que hay son los
+  // empaquetados, que son de otra: pintarlos y corregirlos despues produce un
+  // parpadeo, y en el caso de la ventana de alimentacion, una alerta que
+  // aparece y se va sola.
+  const [datosListos, setDatosListos] = useState(false);
   const [enLinea, setEnLinea] = useState(() => navigator.onLine);
   const [sinEnviar, setSinEnviar] = useState(0);
   const [registros, setRegistros] = useState<Fila[]>([]);
@@ -108,6 +113,14 @@ export function App() {
   useEffect(() => {
     if (!sesion) return;
     let vigente = true;
+
+    // Arranque instantaneo con lo ultimo que se supo, si lo hay.
+    const copia = datosCacheados(sesion);
+    if (copia) {
+      setDatos(copia);
+      setDatosListos(true);
+    }
+
     void (async () => {
       try {
         const [d, rs] = await Promise.all([cargarDatos(sesion), listarRegistros(sesion)]);
@@ -118,6 +131,8 @@ export function App() {
         setError(null);
       } catch (e) {
         if (vigente) setError(mensaje(e));
+      } finally {
+        if (vigente) setDatosListos(true);
       }
     })();
     return () => { vigente = false; };
@@ -180,6 +195,7 @@ export function App() {
 
   if (!sesionResuelta) return <div className="cargando">Cargando…</div>;
   if (!sesion) return <Bienvenida />;
+  if (!datosListos) return <div className="cargando">Cargando tu plan…</div>;
 
   return (
     <div className="app">
