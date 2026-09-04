@@ -3,6 +3,7 @@ import {
   detalleDe, equivalenciasDe, gruposDe, proteinaDeDesvio, resumenDeDesvio,
   type Desvio as Datos, type MealSlot, type NutritionPlan,
 } from '@pa/core';
+import { Plato } from './Plato.tsx';
 
 /**
  * "Hoy comí otra cosa."
@@ -24,19 +25,45 @@ export function Desvio({ plan, slot, cerrados = [], onGuardar, onCancelar }: {
   const [elegido, setElegido] = useState<Datos>(
     Object.fromEntries(grupos.map((g) => [g, null])),
   );
+  // Dos formas de contestar la misma pregunta. Los grupos son mas rapidos
+  // cuando lo que comiste se parece al plan; describir el plato sirve cuando
+  // no se parece en nada, que es justamente cuando este boton se toca.
+  const [modo, setModo] = useState<'grupos' | 'plato'>('grupos');
+  const [plato, setPlato] = useState<{
+    nombre: string; porciones: Record<string, string | null>; proteina: number;
+  } | null>(null);
 
   const nombres = new Map(plan.foodGroups.map((g) => [g.id, g.name]));
   const proteina = proteinaDeDesvio(plan, elegido);
   const resumen = resumenDeDesvio(plan, slot, elegido);
+  const hayPlato = Boolean(plato && (plato.nombre.trim() || Object.keys(plato.porciones).length > 0));
 
   return (
     <>
       <p className="hero-detalle">
-        Marcá qué lugar ocupó lo que comiste. No hace falta que sea exacto: sirve
-        para saber cómo seguir el día.
+        {modo === 'grupos'
+          ? 'Marcá qué lugar ocupó lo que comiste. No hace falta que sea exacto: sirve para saber cómo seguir el día.'
+          : 'Escribí el plato y sus ingredientes. No hacen falta cantidades.'}
       </p>
 
-      {grupos.map((groupId) => {
+      <div className="modos">
+        <button
+          className={`modo ${modo === 'grupos' ? 'elegido' : ''}`}
+          onClick={() => setModo('grupos')}
+        >
+          Por grupos
+        </button>
+        <button
+          className={`modo ${modo === 'plato' ? 'elegido' : ''}`}
+          onClick={() => setModo('plato')}
+        >
+          Describir el plato
+        </button>
+      </div>
+
+      {modo === 'plato' && <Plato plan={plan} onCambio={setPlato} />}
+
+      {modo === 'grupos' && grupos.map((groupId) => {
         const opciones = equivalenciasDe(plan, groupId, slot.id);
         // Un grupo cerrado no se esconde: se registra lo que se comio, no lo
         // que se deberia haber comido. Solo se dice por que no correspondia.
@@ -88,8 +115,10 @@ export function Desvio({ plan, slot, cerrados = [], onGuardar, onCancelar }: {
       })}
 
       <div className="desvio-resumen">
-        <span>{resumen}</span>
-        {proteina > 0 && <b className="mono">{proteina} g de proteína</b>}
+        <span>{modo === 'plato' ? (plato?.nombre || 'Sin describir todavía') : resumen}</span>
+        {(modo === 'plato' ? plato?.proteina ?? 0 : proteina) > 0 && (
+          <b className="mono">{modo === 'plato' ? plato!.proteina : proteina} g de proteína</b>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
@@ -97,11 +126,28 @@ export function Desvio({ plan, slot, cerrados = [], onGuardar, onCancelar }: {
         <button
           className="boton boton-lleno"
           style={{ flex: 2 }}
-          onClick={() => onGuardar(elegido, proteina, resumen)}
+          disabled={modo === 'plato' && !hayPlato}
+          onClick={() => modo === 'plato'
+            ? onGuardar(plato!.porciones, plato!.proteina, textoDelPlato(plato!))
+            : onGuardar(elegido, proteina, resumen)}
         >
           Registrar
         </button>
       </div>
     </>
   );
+}
+
+/**
+ * Como queda el plato en el historial que lee la nutricionista.
+ *
+ * El nombre primero, porque es lo que ella reconoce de un vistazo, y los
+ * ingredientes entre parentesis para que pueda ver de que estaba hecho sin
+ * tener que preguntar.
+ */
+function textoDelPlato(plato: { nombre: string; porciones: Record<string, string | null> }): string {
+  const partes = Object.values(plato.porciones).filter((v): v is string => Boolean(v));
+  const nombre = plato.nombre.trim();
+  if (nombre && partes.length > 0) return `${nombre} (${partes.join(', ')})`;
+  return nombre || partes.join(', ');
 }

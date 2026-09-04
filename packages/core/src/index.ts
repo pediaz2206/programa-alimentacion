@@ -15,4 +15,5 @@ export * from './reglas.ts';
 export * from './momento.ts';
 export * from './notificaciones.ts';
 export * from './validate.ts';
+export * from './vocabulario.ts';
 export * from './ventana.ts';
