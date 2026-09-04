@@ -43,6 +43,8 @@ export function Plato({ plan, onCambio }: {
       texto: limpio,
       groupId: r?.groupId ?? null,
       ...(r?.ex ? { ex: r.ex } : {}),
+      ...(r ? { conocido: true } : {}),
+      ...(r?.nota ? { nota: r.nota } : {}),
     };
     const siguientes = [...ingredientes, nuevo];
     setIngredientes(siguientes);
@@ -55,8 +57,10 @@ export function Plato({ plan, onCambio }: {
       if (n !== indice) return i;
       // Al corregir el grupo a mano, la equivalencia adivinada deja de valer:
       // su proteina era la del alimento que la app creyo, no la del real.
-      const { ex: _descartada, ...resto } = i;
-      return { ...resto, groupId };
+      // Al corregir a mano deja de ser una adivinanza de la app: la nota que
+      // explicaba su criterio ya no viene al caso.
+      const { ex: _descartada, nota: _tampoco, ...resto } = i;
+      return { ...resto, groupId, conocido: true };
     });
     setIngredientes(siguientes);
     avisar(nombre, siguientes);
@@ -68,7 +72,7 @@ export function Plato({ plan, onCambio }: {
     avisar(nombre, siguientes);
   }
 
-  const sinGrupo = ingredientes.filter((i) => i.groupId == null).length;
+  const sinGrupo = ingredientes.filter((i) => i.groupId == null && !i.conocido).length;
 
   return (
     <div className="plato">
@@ -97,7 +101,7 @@ export function Plato({ plan, onCambio }: {
       {ingredientes.length > 0 && (
         <ul className="plato-lista">
           {ingredientes.map((i, n) => (
-            <li key={n} className={i.groupId ? '' : 'sin-grupo'}>
+            <li key={n} className={i.groupId || i.conocido ? '' : 'sin-grupo'}>
               <div className="plato-fila">
                 <i className="punto" style={{ background: `var(--g-${i.groupId}, var(--linea))` }} />
                 <span className="plato-nombre">{i.texto}</span>
@@ -105,6 +109,12 @@ export function Plato({ plan, onCambio }: {
                   quitar
                 </button>
               </div>
+              {i.groupId == null && i.conocido && (
+                <span className="plato-nocuenta">
+                  No ocupa lugar en el plan.{i.nota ? ` ${i.nota}` : ''}
+                </span>
+              )}
+              {i.groupId && i.nota && <span className="plato-nocuenta">{i.nota}</span>}
               {/*
                 * Los grupos siempre visibles, no escondidos detras de un menu:
                 * asi corregir una adivinanza cuesta un toque, y ver que la app

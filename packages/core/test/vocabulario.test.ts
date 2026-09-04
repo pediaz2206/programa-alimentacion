@@ -35,10 +35,10 @@ test('reconoce los ingredientes de una tarta de verdura', () => {
   assert.equal(reconocer(plan, 'queso port salut')?.groupId, 'proteinas');
 });
 
-test('lo que el plan no nombra no se adivina', () => {
+test('lo que ni el plan ni las excepciones nombran no se adivina', () => {
   // Preferible pedirle el grupo una vez que inventarlo y ensuciar el historial.
-  assert.equal(reconocer(plan, 'masa de tarta'), null);
-  assert.equal(reconocer(plan, 'pizza'), null);
+  assert.equal(reconocer(plan, 'gelatina de frambuesa'), null);
+  assert.equal(reconocer(plan, 'salsa golf casera'), null);
 });
 
 test('sin acentos encuentra lo mismo', () => {
@@ -117,4 +117,94 @@ test('la proteina sale de las equivalencias reconocidas, no de una tabla inventa
 test('un ingrediente al que le sacaron el grupo deja de sumar proteina', () => {
   const ex = reconocer(plan, 'queso port salut')!.ex!;
   assert.equal(proteinaDe([{ texto: 'Queso', groupId: null, ex }]), 0);
+});
+
+// --- el bug que la lista de excepciones destapo ---
+
+test('una palabra no coincide por estar adentro de otra', () => {
+  // "sal" estaba dentro de "queso port salut" y "mate" dentro de "tomates
+  // cherry": la app decia que la sal era proteina y el mate, vegetal.
+  const sal = reconocer(plan, 'sal');
+  assert.notEqual(sal?.segun, 'Queso port salut');
+  const mate = reconocer(plan, 'mate');
+  assert.notEqual(mate?.segun, 'Tomates cherry');
+});
+
+test('la coincidencia por palabras enteras sigue funcionando', () => {
+  assert.equal(reconocer(plan, 'queso port salut')?.groupId, 'proteinas');
+  assert.equal(reconocer(plan, 'pan lactal')?.groupId, 'hidratos');
+});
+
+// --- las notas del plan tambien son vocabulario ---
+
+test('los cortes que enumera una nota se reconocen', () => {
+  // "Carne vacuna magra" trae "nalga, peceto, cuadril, bola de lomo, lomo".
+  for (const corte of ['nalga', 'peceto', 'cuadril', 'bola de lomo']) {
+    assert.equal(reconocer(plan, corte)?.groupId, 'proteinas', `${corte} deberia ser proteina`);
+  }
+});
+
+test('las notas que son indicaciones y no alimentos no entran al diccionario', () => {
+  assert.equal(reconocer(plan, 'cucharadas'), null);
+  assert.equal(reconocer(plan, 'discos'), null);
+});
+
+// --- las excepciones ---
+
+test('lo que no ocupa lugar se distingue de lo desconocido', () => {
+  // Dos "null" distintos: uno es "sé que no cuenta", el otro "no sé qué es".
+  const agua = reconocer(plan, 'agua');
+  assert.equal(agua?.groupId, null);
+  assert.notEqual(agua, null, 'el agua tiene que reconocerse');
+  assert.equal(reconocer(plan, 'gelatina de frambuesa'), null);
+});
+
+test('una bebida vegetal no pasa por proteina', () => {
+  const r = reconocer(plan, 'leche de almendras');
+  assert.equal(r?.groupId, null);
+  assert.match(r!.nota!, /no equivale a una porción de proteína/i);
+});
+
+test('el dulce de leche no es lacteo a los ojos del plan', () => {
+  assert.equal(reconocer(plan, 'dulce de leche')?.groupId, null);
+});
+
+test('la leche sola sigue siendo proteina', () => {
+  // La excepción corrige los homónimos, no tapa el término original.
+  assert.equal(reconocer(plan, 'leche')?.groupId, 'proteinas');
+});
+
+test('la comida de todos los dias cae en su grupo predominante', () => {
+  assert.equal(reconocer(plan, 'milanesa')?.groupId, 'proteinas');
+  assert.equal(reconocer(plan, 'pizza')?.groupId, 'hidratos');
+  assert.equal(reconocer(plan, 'masa de tarta')?.groupId, 'hidratos');
+  assert.equal(reconocer(plan, 'ensalada')?.groupId, 'vegetales');
+  assert.equal(reconocer(plan, 'nueces')?.groupId, 'grasas');
+  assert.equal(reconocer(plan, 'uvas')?.groupId, 'frutas');
+});
+
+test('una excepcion avisa cuando el plato tiene mas de un grupo', () => {
+  assert.match(reconocer(plan, 'milanesa')!.nota!, /rebozado/);
+});
+
+test('las excepciones del plan le ganan a las de la app', () => {
+  // Quien escribió el plan sabe más que una lista general.
+  const conSuyas = {
+    ...plan,
+    excepciones: [{ termino: 'milanesa', groupId: 'hidratos', nota: 'Acá la contamos así.' }],
+  };
+  assert.equal(reconocer(conSuyas, 'milanesa')?.groupId, 'hidratos');
+});
+
+test('una excepcion no le gana a una coincidencia exacta del plan', () => {
+  // El plan nombra "Palta" en grasas; ninguna excepción debe pisarlo.
+  assert.equal(reconocer(plan, 'palta')?.groupId, 'grasas');
+});
+
+test('lo que no cuenta no aporta porciones ni proteina', () => {
+  const p = porcionesDe([
+    { texto: 'Agua', groupId: null, conocido: true },
+    { texto: 'Espinaca', groupId: 'vegetales' },
+  ]);
+  assert.deepEqual(p, { vegetales: 'Espinaca' });
 });

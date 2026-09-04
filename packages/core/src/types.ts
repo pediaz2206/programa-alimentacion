@@ -143,6 +143,11 @@ export interface NutritionPlan {
   guidelines?: string[];
   /** Las indicaciones que la app puede verificar contra lo registrado. */
   reglas?: ReglaPlan[];
+  /**
+   * Correcciones al reconocimiento de alimentos, propias de este plan. Pisan a
+   * las que trae la app: quien escribio el plan sabe mas que una lista general.
+   */
+  excepciones?: { termino: string; groupId: string | null; nota?: string }[];
   /** Objetivo diario de proteina en gramos, si el plan lo fija asi. */
   proteinTargetGrams?: number;
   /** Politica de comidas libres, si el plan contempla alguna. */
