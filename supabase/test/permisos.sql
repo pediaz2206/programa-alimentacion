@@ -24,6 +24,9 @@ insert into public.meal_logs (patient_id, local_date, slot_id, protein_grams) va
 insert into storage.objects (bucket_id, name) values
   ('meal-photos', '11111111-1111-1111-1111-111111111111/almuerzo.jpg');
 
+insert into public.body_measurements (patient_id, local_date, weight_kg, waist_cm) values
+  ('11111111-1111-1111-1111-111111111111', current_date, 81.4, 91.5);
+
 create or replace function pruebas.check(descripcion text, obtenido boolean, esperado boolean)
 returns void language plpgsql as $$
 begin
@@ -68,6 +71,8 @@ select pruebas.check('ve el registro de comidas',
   exists (select 1 from public.meal_logs where patient_id = '11111111-1111-1111-1111-111111111111'), true);
 select pruebas.check('ve la foto de la comida',
   exists (select 1 from storage.objects where bucket_id = 'meal-photos'), true);
+select pruebas.check('ve el peso y la cintura',
+  exists (select 1 from public.body_measurements where patient_id = '11111111-1111-1111-1111-111111111111'), true);
 
 -- 5. Revocado: el acceso se corta, incluidas las fotos ya subidas.
 update public.care_relationships set status = 'revoked', revoked_at = now()
@@ -78,6 +83,8 @@ select pruebas.check('revocar oculta el registro',
   exists (select 1 from public.meal_logs where patient_id = '11111111-1111-1111-1111-111111111111'), false);
 select pruebas.check('revocar oculta las fotos ya subidas',
   exists (select 1 from storage.objects where bucket_id = 'meal-photos'), false);
+select pruebas.check('revocar oculta el peso y la cintura',
+  exists (select 1 from public.body_measurements where patient_id = '11111111-1111-1111-1111-111111111111'), false);
 
 -- 6. Un profesional ajeno nunca ve nada, aunque el vinculo del otro este vigente.
 update public.care_relationships
@@ -90,6 +97,8 @@ select pruebas.check('un profesional ajeno no ve el registro',
   exists (select 1 from public.meal_logs where patient_id = '11111111-1111-1111-1111-111111111111'), false);
 select pruebas.check('un profesional ajeno no ve las fotos',
   exists (select 1 from storage.objects where bucket_id = 'meal-photos'), false);
+select pruebas.check('un profesional ajeno no ve el peso ni la cintura',
+  exists (select 1 from public.body_measurements where patient_id = '11111111-1111-1111-1111-111111111111'), false);
 
 -- 7. Las vistas de metricas respetan el mismo vinculo que las tablas.
 --    Una vista sin security_invoker saltearia RLS y filtraria todo.
@@ -111,6 +120,20 @@ select pruebas.check('el paciente ve su registro',
   exists (select 1 from public.meal_logs where patient_id = '11111111-1111-1111-1111-111111111111'), true);
 select pruebas.check('el paciente ve sus fotos',
   exists (select 1 from storage.objects where bucket_id = 'meal-photos'), true);
+select pruebas.check('el paciente ve su peso',
+  exists (select 1 from public.body_measurements where patient_id = '11111111-1111-1111-1111-111111111111'), true);
+
+-- El peso lo reporta quien se pesa: la nutricionista lee, nunca escribe.
+select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+do $$
+begin
+  insert into public.body_measurements (patient_id, local_date, weight_kg)
+  values ('11111111-1111-1111-1111-111111111111', current_date - 1, 99);
+  perform pruebas.check('la nutricionista no puede cargar el peso del paciente', true, false);
+exception when insufficient_privilege then
+  perform pruebas.check('la nutricionista no puede cargar el peso del paciente', false, false);
+end $$;
+select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
 
 -- 9. Invitar por email a alguien que todavia no reclamo la invitacion.
 set role authenticated;

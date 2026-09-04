@@ -3,6 +3,17 @@
 #   supabase/test/correr.sh
 set -euo pipefail
 export PATH="$PATH:/usr/lib/postgresql/16/bin"
+
+# initdb se niega a correr como root. En un contenedor donde el usuario es
+# root (CI, sandboxes) se reintenta como `postgres`, que existe con el paquete.
+if [ "$(id -u)" = 0 ] && [ -z "${ENPUNTO_YA_DEGRADADO:-}" ] && getent passwd postgres >/dev/null; then
+  DIR=$(mktemp -d /tmp/enpunto-pg.XXXX)
+  cp -r . "$DIR/repo"
+  chown -R postgres:postgres "$DIR"
+  trap 'rm -rf "$DIR"' EXIT
+  exec su postgres -c "cd '$DIR/repo' && ENPUNTO_YA_DEGRADADO=1 bash supabase/test/correr.sh"
+fi
+
 DIR=$(mktemp -d /tmp/enpunto-pg.XXXX)
 trap 'pg_ctl -D "$DIR/data" stop -m immediate >/dev/null 2>&1 || true; rm -rf "$DIR"' EXIT
 cp supabase/schema.sql supabase/test/arnes.sql supabase/test/permisos.sql "$DIR/"

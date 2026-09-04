@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import type { ScheduledEvent, UserConfig } from '@pa/core';
+import type { Medida, ScheduledEvent, UserConfig } from '@pa/core';
 import { agendaDe, minutosAhora } from './lib/datos.ts';
 import { configEmpaquetada, planEmpaquetado } from './lib/semilla.ts';
 import {
-  borrarRegistro, cargarDatos, datosCacheados, guardarConfig, guardarRegistro,
-  listarRegistros, pendientes as contarPendientes, sincronizar, type Datos,
+  borrarRegistro, cargarDatos, datosCacheados, guardarConfig, guardarMedida,
+  guardarRegistro, listarMedidas, listarRegistros,
+  pendientes as contarPendientes, sincronizar, type Datos,
 } from './lib/repositorio.ts';
 import { fechaISO, type Registro as Fila } from './lib/registro.ts';
 import { supabase } from './lib/supabase.ts';
@@ -59,6 +60,7 @@ export function App() {
   const [enLinea, setEnLinea] = useState(() => navigator.onLine);
   const [sinEnviar, setSinEnviar] = useState(0);
   const [registros, setRegistros] = useState<Fila[]>([]);
+  const [medidas, setMedidas] = useState<Medida[]>([]);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ahora, setAhora] = useState(minutosAhora);
@@ -123,10 +125,13 @@ export function App() {
 
     void (async () => {
       try {
-        const [d, rs] = await Promise.all([cargarDatos(sesion), listarRegistros(sesion)]);
+        const [d, rs, ms] = await Promise.all([
+          cargarDatos(sesion), listarRegistros(sesion), listarMedidas(sesion),
+        ]);
         if (!vigente) return;
         setDatos(d);
         setRegistros(rs);
+        setMedidas(ms);
         setSinEnviar(contarPendientes(sesion));
         setError(null);
       } catch (e) {
@@ -183,6 +188,18 @@ export function App() {
       setDatos((d) => ({ ...d, config: anterior }));
       setError(`No se pudo guardar el cambio. ${mensaje(e)}`);
     });
+  }
+
+  async function alGuardarMedida(m: Medida) {
+    setGuardando(true);
+    try {
+      setMedidas(await guardarMedida(sesion, m));
+      setError(null);
+    } catch (e) {
+      setError(mensaje(e));
+    } finally {
+      setGuardando(false);
+    }
   }
 
   async function alGuardar(r: Fila) {
@@ -257,7 +274,9 @@ export function App() {
             plan={datos.plan}
             eventos={eventos}
             registros={registros}
+            medidas={medidas}
             onGuardar={(r) => void alGuardar(r)}
+            onGuardarMedida={(m) => void alGuardarMedida(m)}
             onBorrar={(f, s) => void alBorrar(f, s)}
             guardando={guardando}
           />

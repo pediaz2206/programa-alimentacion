@@ -616,3 +616,26 @@ button.ventana:focus-visible { outline: 2px solid var(--verde); outline-offset: 
 /* Un grupo cerrado por una regla: se puede elegir igual, pero se ve por que no conviene. */
 .desvio-chip.cerrado { opacity: .55; border-style: dashed; }
 .desvio-cerrado { font-size: 11.5px; color: var(--ambar); line-height: 1.4; }
+
+/* ------------------------------------------------------- progreso -- */
+.progreso-tope { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.chip-neutro { background: var(--superficie-2); color: var(--tenue); }
+
+.curva { margin: 12px 0 4px; }
+.curva svg { width: 100%; height: 84px; display: block; }
+.curva-pie {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  font-size: 11.5px; color: var(--tenue); margin-top: 4px;
+}
+.curva-ultimo { color: var(--verde); font-weight: 600; font-size: 13px; }
+
+.medir { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.medir-campos { display: flex; gap: 10px; }
+.medir-campos label { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.medir-campos span { font-size: 12px; color: var(--tenue); }
+.medir-campos input {
+  font: inherit; font-size: 16px; /* 16px evita el zoom automatico de iOS al enfocar */
+  padding: 9px 11px; border-radius: 10px; width: 100%; box-sizing: border-box;
+  border: 1px solid var(--linea); background: var(--superficie); color: var(--tinta);
+}
+.medir-campos input:focus-visible { outline: 2px solid var(--verde); outline-offset: 1px; }

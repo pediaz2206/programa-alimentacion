@@ -92,3 +92,11 @@ function mismaComida(a: Pendiente, b: Pendiente): boolean {
     p.tipo === 'guardar' ? `${p.registro.fecha}:${p.registro.slotId}` : `${p.fecha}:${p.slotId}`;
   return id(a) === id(b);
 }
+
+export function guardarMedidas(uid: string, medidas: unknown[]): void {
+  escribir(clave(uid, 'medidas'), medidas);
+}
+
+export function leerMedidas<T>(uid: string): T[] {
+  return leer<T[]>(clave(uid, 'medidas')) ?? [];
+}

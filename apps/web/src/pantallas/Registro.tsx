@@ -1,15 +1,18 @@
 import { useRef, useState } from 'react';
-import type { NutritionPlan, ScheduledEvent } from '@pa/core';
+import type { Medida, NutritionPlan, ScheduledEvent } from '@pa/core';
 import { balanceDe, nombresSlot, opcionPorId } from '../lib/datos.ts';
 import { fechaISO, opcionesDe, type Registro as Fila } from '../lib/registro.ts';
 import { achicar } from '../lib/imagen.ts';
 import { Encabezado } from '../componentes/Encabezado.tsx';
+import { Progreso } from '../componentes/Progreso.tsx';
 
 interface Props {
   plan: NutritionPlan;
   eventos: ScheduledEvent[];
   registros: Fila[];
+  medidas: Medida[];
   onGuardar: (r: Fila) => void;
+  onGuardarMedida: (m: Medida) => void;
   onBorrar: (fecha: string, slotId: string) => void;
   guardando: boolean;
 }
@@ -19,7 +22,7 @@ interface Props {
  * foto se guarda como DataURL en el navegador; con backend pasa a Storage y
  * aca queda la ruta.
  */
-export function Registro({ plan, eventos, registros, onGuardar, onBorrar, guardando }: Props) {
+export function Registro({ plan, eventos, registros, medidas, onGuardar, onGuardarMedida, onBorrar, guardando }: Props) {
   const hoy = fechaISO();
   const NOMBRE_SLOT = nombresSlot(plan);
   const [abierto, setAbierto] = useState<string | null>(null);
@@ -30,6 +33,8 @@ export function Registro({ plan, eventos, registros, onGuardar, onBorrar, guarda
   return (
     <>
       <Encabezado eyebrow="Lo que comiste" titulo="Registro" />
+
+      <Progreso medidas={medidas} onGuardar={onGuardarMedida} guardando={guardando} />
 
       {balance.protein && (
         <section className="tarjeta">

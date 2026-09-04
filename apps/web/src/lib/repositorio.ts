@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
-import type { NutritionPlan, UserConfig } from '@pa/core';
+import type { Medida, NutritionPlan, UserConfig } from '@pa/core';
 import { supabase } from './supabase.ts';
 import { planEmpaquetado } from './semilla.ts';
 import * as cache from './cache.ts';
@@ -297,4 +297,64 @@ export async function sincronizar(sesion: Session | null): Promise<Registro[]> {
   }
   cache.vaciarCola(user.id);
   return listarRegistros(sesion);
+}
+
+
+// ------------------------------------------------------------- medidas --
+
+/**
+ * Peso y cintura. Se leen y escriben aparte de las comidas porque tienen otra
+ * cadencia: las comidas son varias por dia, esto es una vez por semana.
+ */
+export async function listarMedidas(sesion: Session | null): Promise<Medida[]> {
+  const { user } = exigirSesion(sesion);
+  try {
+    const { data, error } = await supabase!
+      .from('body_measurements')
+      .select('local_date, weight_kg, waist_cm, note')
+      .eq('patient_id', user.id)
+      .order('local_date', { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    const medidas = (data ?? []).map(filaAMedida);
+    cache.guardarMedidas(user.id, medidas);
+    return medidas;
+  } catch {
+    // Sin red se muestra lo ultimo que se supo: una curva vieja sigue
+    // diciendo mas que una pantalla vacia.
+    return cache.leerMedidas(user.id);
+  }
+}
+
+export async function guardarMedida(sesion: Session | null, medida: Medida): Promise<Medida[]> {
+  const { user } = exigirSesion(sesion);
+  const { error } = await supabase!.from('body_measurements').upsert({
+    patient_id: user.id,
+    local_date: medida.fecha,
+    weight_kg: medida.pesoKg ?? null,
+    waist_cm: medida.cinturaCm ?? null,
+    note: medida.nota ?? null,
+  }, { onConflict: 'patient_id,local_date' });
+  if (error) throw error;
+  return await listarMedidas(sesion);
+}
+
+export async function borrarMedida(sesion: Session | null, fecha: string): Promise<Medida[]> {
+  const { user } = exigirSesion(sesion);
+  const { error } = await supabase!
+    .from('body_measurements')
+    .delete()
+    .eq('patient_id', user.id)
+    .eq('local_date', fecha);
+  if (error) throw error;
+  return await listarMedidas(sesion);
+}
+
+function filaAMedida(r: Record<string, unknown>): Medida {
+  return {
+    fecha: r['local_date'] as string,
+    pesoKg: r['weight_kg'] != null ? Number(r['weight_kg']) : null,
+    cinturaCm: r['waist_cm'] != null ? Number(r['waist_cm']) : null,
+    ...(r['note'] ? { nota: r['note'] as string } : {}),
+  };
 }

@@ -230,6 +230,25 @@ create index if not exists meal_logs_free_idx
 
 -- ---------------------------------------------------------- notificaciones --
 
+-- Medidas corporales. Adherencia y proteina miden si la persona siguio el
+-- plan; ninguna metrica mide si el plan funciona. En recomposicion la balanza
+-- sola miente (sube musculo, baja grasa, el numero no se mueve), asi que se
+-- guardan dos series y la pantalla muestra tendencia, no el dato del dia.
+create table if not exists public.body_measurements (
+  id           uuid primary key default gen_random_uuid(),
+  patient_id   uuid not null references auth.users (id) on delete cascade,
+  local_date   date not null,
+  weight_kg    numeric(5,2) check (weight_kg > 0 and weight_kg < 400),
+  waist_cm     numeric(5,1) check (waist_cm > 0 and waist_cm < 300),
+  note         text,
+  created_at   timestamptz not null default now(),
+  unique (patient_id, local_date),
+  constraint body_measurements_algo_que_medir
+    check (weight_kg is not null or waist_cm is not null)
+);
+create index if not exists body_measurements_patient_date_idx
+  on public.body_measurements (patient_id, local_date desc);
+
 create table if not exists public.push_subscriptions (
   id         uuid primary key default gen_random_uuid(),
   owner_id   uuid not null references auth.users (id) on delete cascade,
@@ -264,6 +283,7 @@ alter table public.plans               enable row level security;
 alter table public.plan_versions       enable row level security;
 alter table public.configs             enable row level security;
 alter table public.meal_logs           enable row level security;
+alter table public.body_measurements   enable row level security;
 alter table public.push_subscriptions  enable row level security;
 alter table public.notification_log    enable row level security;
 
@@ -356,6 +376,15 @@ create policy meal_logs_patient on public.meal_logs
 
 drop policy if exists meal_logs_professional_read on public.meal_logs;
 create policy meal_logs_professional_read on public.meal_logs
+  for select using (public.has_care_access(patient_id));
+
+drop policy if exists body_measurements_patient on public.body_measurements;
+create policy body_measurements_patient on public.body_measurements
+  for all using (patient_id = auth.uid()) with check (patient_id = auth.uid());
+
+-- Solo lectura, y solo con vinculo activo: el peso lo reporta quien se pesa.
+drop policy if exists body_measurements_professional_read on public.body_measurements;
+create policy body_measurements_professional_read on public.body_measurements
   for select using (public.has_care_access(patient_id));
 
 drop policy if exists push_subs_own on public.push_subscriptions;
