@@ -180,6 +180,13 @@ function Ahora({ plan, momento, eventos, ahora, onRegistrar, onRegistrarDesvio }
         </p>
       )}
 
+      {/*
+        * Antes esto vivia solo en la rama 'meal'. Pero el aviso de ingredientes
+        * es cuando se decide que cocinar: es el momento en que la regla sirve
+        * mas, no menos.
+        */}
+      <Reglas plan={plan} evento={evento} />
+
       {tipo === 'preparar' && evento.checklist && evento.checklist.length > 0 && (
         <ul className="lista">
           {evento.checklist.map((i: Ingredient, n: number) => (
@@ -213,7 +220,6 @@ function Ahora({ plan, momento, eventos, ahora, onRegistrar, onRegistrarDesvio }
           {evento.freeMeal
             ? <p className="hero-detalle">Comida del 20%: libre. Controlá igual las porciones.</p>
             : <p className="hero-detalle">{evento.body}</p>}
-          <Reglas plan={plan} evento={evento} />
           {opciones.length > 0 && (
             <div className="opciones">
               {opciones.map((o) => <span className="opcion" key={o.id}>{o.name}</span>)}
