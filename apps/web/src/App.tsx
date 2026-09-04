@@ -57,6 +57,10 @@ export function App() {
   // parpadeo, y en el caso de la ventana de alimentacion, una alerta que
   // aparece y se va sola.
   const [datosListos, setDatosListos] = useState(false);
+  // Distinto de `datosListos`: hay algo que pintar apenas se lee el cache, pero
+  // "no se pudo contactar al servidor" solo se puede afirmar cuando el intento
+  // termino. Con una sola bandera, cada refresh mostraba esa alerta un segundo.
+  const [cargaTerminada, setCargaTerminada] = useState(false);
   const [enLinea, setEnLinea] = useState(() => navigator.onLine);
   const [sinEnviar, setSinEnviar] = useState(0);
   const [registros, setRegistros] = useState<Fila[]>([]);
@@ -115,6 +119,7 @@ export function App() {
   useEffect(() => {
     if (!sesion) return;
     let vigente = true;
+    setCargaTerminada(false);
 
     // Arranque instantaneo con lo ultimo que se supo, si lo hay.
     const copia = datosCacheados(sesion);
@@ -137,7 +142,10 @@ export function App() {
       } catch (e) {
         if (vigente) setError(mensaje(e));
       } finally {
-        if (vigente) setDatosListos(true);
+        if (vigente) {
+          setDatosListos(true);
+          setCargaTerminada(true);
+        }
       }
     })();
     return () => { vigente = false; };
@@ -231,7 +239,9 @@ export function App() {
   return (
     <div className="app">
       <main className="contenido">
-        <EstadoConexion enLinea={enLinea} desdeCache={datos.desdeCache} sinEnviar={sinEnviar} />
+        {cargaTerminada && (
+          <EstadoConexion enLinea={enLinea} desdeCache={datos.desdeCache} sinEnviar={sinEnviar} />
+        )}
 
         {error && (
           <div className="aviso">
