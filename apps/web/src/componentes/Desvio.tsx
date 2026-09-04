@@ -12,9 +12,11 @@ import {
  * la nutricionista puede leer después, y lo único que la app puede calcular
  * sin inventar.
  */
-export function Desvio({ plan, slot, onGuardar, onCancelar }: {
+export function Desvio({ plan, slot, cerrados = [], onGuardar, onCancelar }: {
   plan: NutritionPlan;
   slot: MealSlot;
+  /** Grupos que las reglas del plan cerraron para esta comida. */
+  cerrados?: { groupId: string; motivo: string; texto: string }[];
   onGuardar: (datos: Datos, proteina: number, resumen: string) => void;
   onCancelar: () => void;
 }) {
@@ -36,12 +38,16 @@ export function Desvio({ plan, slot, onGuardar, onCancelar }: {
 
       {grupos.map((groupId) => {
         const opciones = equivalenciasDe(plan, groupId, slot.id);
+        // Un grupo cerrado no se esconde: se registra lo que se comio, no lo
+        // que se deberia haber comido. Solo se dice por que no correspondia.
+        const cerrado = cerrados.find((c) => c.groupId === groupId);
         return (
           <div className="desvio-grupo" key={groupId}>
             <span className="desvio-titulo">
               <i className="punto" style={{ background: `var(--g-${groupId}, var(--tenue))` }} />
               {nombres.get(groupId) ?? groupId}
             </span>
+            {cerrado && <span className="desvio-cerrado">{cerrado.motivo} {cerrado.texto}</span>}
             <div className="desvio-opciones">
               <button
                 type="button"
@@ -69,7 +75,7 @@ export function Desvio({ plan, slot, onGuardar, onCancelar }: {
                 <button
                   key={ex.label}
                   type="button"
-                  className={`desvio-chip ${elegido[groupId] === ex.label ? 'elegido' : ''}`}
+                  className={`desvio-chip ${elegido[groupId] === ex.label ? 'elegido' : ''} ${cerrado ? 'cerrado' : ''}`}
                   onClick={() => setElegido((p) => ({ ...p, [groupId]: ex.label }))}
                   title={detalleDe(ex)}
                 >

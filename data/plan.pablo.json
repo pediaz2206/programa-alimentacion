@@ -13,6 +13,35 @@
     "Controlar las porciones aunque sea la comida del 20%.",
     "Evitar hacer todas las comidas del 20% el mismo día."
   ],
+  "reglas": [
+    {
+      "id": "grasas-una-vez",
+      "tipo": "una-vez-al-dia",
+      "groupId": "grasas",
+      "texto": "Frutos secos, mantequilla de maní o palta: solo una vez al día. Elegir una opción y decidir en qué comida usarla."
+    },
+    {
+      "id": "hidrato-cena",
+      "tipo": "no-repetir-en",
+      "groupId": "hidratos",
+      "siEn": "almuerzo",
+      "entonces": "cena",
+      "texto": "Si en el almuerzo predominó el carbohidrato, en la cena evitar agregarlo."
+    },
+    {
+      "id": "frutas-dia",
+      "tipo": "minimo-diario",
+      "groupId": "frutas",
+      "minimo": 2,
+      "maximo": 3,
+      "texto": "Intentar consumir 2 o 3 frutas por día."
+    },
+    {
+      "id": "libres-espaciadas",
+      "tipo": "libres-espaciadas",
+      "texto": "Evitar hacer todas las comidas del 20% el mismo día."
+    }
+  ],
   "foodGroups": [
     {
       "id": "hidratos",

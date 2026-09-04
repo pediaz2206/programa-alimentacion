@@ -3,6 +3,7 @@ import { describePlate, plateFor } from './plate.ts';
 import { checklistFor, formatIngredient } from './shopping.ts';
 import { isFreeMeal } from './libres.ts';
 import { dayIndexOf, suggestOptions } from './selection.ts';
+import { evaluarReglas, type ComidaDelDia } from './reglas.ts';
 import { formatTime, humanizeMinutes, isWithinWindow, minutesUntil, parseTime } from './time.ts';
 /**
  * Cuanto se asume que dura una comida. Sirve para avisar cuando una comida
@@ -51,14 +52,19 @@ export function resolveSlots(plan: NutritionPlan, config: UserConfig, date: Date
  * Genera la agenda completa de un dia: avisos de ingredientes, recordatorios de
  * comida con sus opciones, y los limites de la ventana de ayuno.
  *
- * Es una funcion pura: el mismo plan + config + fecha siempre da la misma agenda.
- * Eso permite calcularla en el cliente para mostrarla y en el servidor para
- * programar las notificaciones, sin que se desincronicen.
+ * Es una funcion pura: el mismo plan + config + fecha + comidas siempre da la
+ * misma agenda. Eso permite calcularla en el cliente para mostrarla y en el
+ * servidor para programar las notificaciones, sin que se desincronicen.
+ *
+ * `comidas` son las que ya se registraron hoy. Con ellas, las reglas del plan
+ * dejan de ser texto y pasan a decidir: si el almuerzo trajo hidrato, la cena
+ * sugiere lo que no lo trae, y dice por que.
  */
 export function buildDaySchedule(
   plan: NutritionPlan,
   config: UserConfig,
   date: Date,
+  comidas: ComidaDelDia[] = [],
 ): ScheduledEvent[] {
   const events: ScheduledEvent[] = [];
   const weekday = date.getDay() as Weekday;
@@ -73,15 +79,22 @@ export function buildDaySchedule(
   // lo que ya aportaron las comidas anteriores del dia.
   const projected: Array<{ option: MealOption; minutes: number }> = [];
 
-  for (const { slot, minutes, prepLeadMinutes } of slots) {
+  for (const [indice, { slot, minutes, prepLeadMinutes }] of slots.entries()) {
     const libre = isFreeMeal(config, weekday, slot.id);
     const balance = computeDailyBalance(plan, projected.map((p) => p.option));
+    const reglas = evaluarReglas(plan, comidas, slot.id, slots.length - indice);
     const suggestions = libre ? [] : suggestOptions(plan, config, slot.id, {
       dayIndex,
       remaining: remainingPortions(balance),
       avoidIds: projected.map((p) => p.option.id),
       remainingProtein: balance.protein?.remaining,
+      cerrados: reglas.cerrados.map((c) => c.groupId),
     });
+    // Solo viaja si tiene algo que decir: un objeto vacio en cada evento
+    // ensucia el payload de las notificaciones sin aportar nada.
+    const conReglas = reglas.cerrados.length + reglas.pendientes.length + reglas.avisos.length > 0
+      ? { reglas }
+      : {};
 
     const time = formatTime(minutes);
     const cierre = (windowStart + windowMinutes) % 1440;
@@ -124,6 +137,7 @@ export function buildDaySchedule(
         suggestions,
         checklist,
         warnings,
+        ...conReglas,
       });
     }
 
@@ -139,6 +153,7 @@ export function buildDaySchedule(
       suggestions,
       warnings,
       ...(libre ? { freeMeal: true } : {}),
+      ...conReglas,
     });
 
     if (suggestions.length > 0) projected.push({ option: suggestions[0]!, minutes });

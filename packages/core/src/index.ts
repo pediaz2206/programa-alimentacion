@@ -9,6 +9,7 @@ export * from './schedule.ts';
 export * from './compras.ts';
 export * from './libres.ts';
 export * from './metricas.ts';
+export * from './reglas.ts';
 export * from './momento.ts';
 export * from './notificaciones.ts';
 export * from './validate.ts';

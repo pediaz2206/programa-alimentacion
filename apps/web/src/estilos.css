@@ -590,3 +590,29 @@ button.ventana:focus-visible { outline: 2px solid var(--verde); outline-offset: 
   font: inherit; font-size: 12px; font-weight: 600; color: var(--verde);
   -webkit-tap-highlight-color: transparent;
 }
+
+/*
+ * Lo que dicen las reglas del plan sobre la comida que viene.
+ *
+ * Dos niveles tipograficos a proposito: arriba la consecuencia, que es lo que
+ * hay que hacer, y abajo la indicacion tal cual la escribio la nutricionista,
+ * mas chica, porque es la fuente y no la orden. La barra de color de la
+ * izquierda distingue cerrar de faltar sin necesidad de un icono mas.
+ */
+.reglas { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.regla {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 9px 11px; border-radius: 10px;
+  border-left: 3px solid var(--linea); background: var(--superficie-2);
+}
+.regla-dice { font-size: 13.5px; line-height: 1.4; color: var(--tinta); font-weight: 600; }
+.regla-texto { font-size: 12px; line-height: 1.45; color: var(--tenue); }
+.regla-cierra { border-left-color: var(--g-hidratos); background: var(--ambar-suave); }
+.regla-cierra .regla-dice { color: var(--ambar); }
+.regla-falta { border-left-color: var(--g-frutas); }
+.regla-ojo { border-left-color: var(--indigo); background: var(--indigo-suave); }
+.regla-ojo .regla-dice { color: var(--indigo); }
+
+/* Un grupo cerrado por una regla: se puede elegir igual, pero se ve por que no conviene. */
+.desvio-chip.cerrado { opacity: .55; border-style: dashed; }
+.desvio-cerrado { font-size: 11.5px; color: var(--ambar); line-height: 1.4; }

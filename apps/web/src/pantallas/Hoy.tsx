@@ -6,6 +6,7 @@ import {
 } from '@pa/core';
 import { Franja } from '../componentes/Franja.tsx';
 import { Desvio } from '../componentes/Desvio.tsx';
+import { Reglas } from '../componentes/Regla.tsx';
 import { Reemplazos } from '../componentes/Reemplazos.tsx';
 import { Aviso } from '../componentes/Aviso.tsx';
 import { Encabezado } from '../componentes/Encabezado.tsx';
@@ -19,7 +20,7 @@ interface Props {
   config: UserConfig;
   registros: Registro[];
   onRegistrar: (evento: ScheduledEvent) => void;
-  onRegistrarDesvio: (evento: ScheduledEvent, proteina: number, resumen: string) => void;
+  onRegistrarDesvio: (evento: ScheduledEvent, datos: DatosDesvio, proteina: number, resumen: string) => void;
   onIrARegistro: () => void;
   onIrAAjustes: () => void;
   onConfig: (c: UserConfig) => void;
@@ -125,7 +126,7 @@ interface AhoraProps {
   eventos: ScheduledEvent[];
   ahora: number;
   onRegistrar: (e: ScheduledEvent) => void;
-  onRegistrarDesvio: (e: ScheduledEvent, proteina: number, resumen: string) => void;
+  onRegistrarDesvio: (e: ScheduledEvent, datos: DatosDesvio, proteina: number, resumen: string) => void;
 }
 
 function Ahora({ plan, momento, eventos, ahora, onRegistrar, onRegistrarDesvio }: AhoraProps) {
@@ -212,6 +213,7 @@ function Ahora({ plan, momento, eventos, ahora, onRegistrar, onRegistrarDesvio }
           {evento.freeMeal
             ? <p className="hero-detalle">Comida del 20%: libre. Controlá igual las porciones.</p>
             : <p className="hero-detalle">{evento.body}</p>}
+          <Reglas plan={plan} evento={evento} />
           {opciones.length > 0 && (
             <div className="opciones">
               {opciones.map((o) => <span className="opcion" key={o.id}>{o.name}</span>)}
@@ -235,10 +237,11 @@ function Ahora({ plan, momento, eventos, ahora, onRegistrar, onRegistrarDesvio }
         <Desvio
           plan={plan}
           slot={slotDe(plan, evento)!}
+          cerrados={evento.reglas?.cerrados ?? []}
           onCancelar={() => setDesviando(false)}
-          onGuardar={(_datos: DatosDesvio, proteina: number, resumen: string) => {
+          onGuardar={(datos: DatosDesvio, proteina: number, resumen: string) => {
             setDesviando(false);
-            onRegistrarDesvio(evento, proteina, resumen);
+            onRegistrarDesvio(evento, datos, proteina, resumen);
           }}
         />
       )}

@@ -166,7 +166,7 @@ export async function listarRegistros(sesion: Session | null): Promise<Registro[
   try {
     const { data, error } = await supabase!
       .from('meal_logs')
-      .select('local_date, slot_id, option_id, protein_grams, is_free_meal, note, photo_path')
+      .select('local_date, slot_id, option_id, portions, protein_grams, is_free_meal, note, photo_path')
       .eq('patient_id', user.id)
       .order('local_date', { ascending: false })
       .limit(120);
@@ -178,6 +178,7 @@ export async function listarRegistros(sesion: Session | null): Promise<Registro[
       optionId: (r.option_id as string | null) ?? null,
       proteinGrams: (r.protein_grams as number | null) ?? null,
       esLibre: Boolean(r.is_free_meal),
+      ...(r.portions ? { porciones: r.portions as Record<string, string | null> } : {}),
       ...(r.note ? { nota: r.note as string } : {}),
       ...(r.photo_path ? { foto: await urlFirmada(r.photo_path as string) } : {}),
     })));
@@ -243,6 +244,7 @@ async function escribirRegistro(uid: string, registro: Registro, planVersionId: 
     local_date: registro.fecha,
     slot_id: registro.slotId,
     option_id: registro.optionId,
+    portions: registro.porciones ?? null,
     protein_grams: registro.proteinGrams,
     is_free_meal: registro.esLibre,
     note: registro.nota ?? null,

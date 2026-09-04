@@ -154,9 +154,23 @@ export function App() {
     });
   }, [sesion, datos.planId]);
 
+  // Lo comido hoy entra en la agenda: es lo que permite que las reglas del
+  // plan decidan que sugerir en la comida que viene.
+  const comidasDeHoy = useMemo(() => {
+    const hoy = fechaISO();
+    return registros
+      .filter((r) => r.fecha === hoy)
+      .map((r) => ({
+        slotId: r.slotId,
+        optionId: r.optionId,
+        porciones: r.porciones ?? null,
+        esLibre: r.esLibre,
+      }));
+  }, [registros]);
+
   const eventos = useMemo(
-    () => agendaDe(datos.plan, datos.config, new Date()),
-    [datos.plan, datos.config],
+    () => agendaDe(datos.plan, datos.config, new Date(), comidasDeHoy),
+    [datos.plan, datos.config, comidasDeHoy],
   );
 
   function guardarConfigLocal(c: UserConfig) {
@@ -220,12 +234,13 @@ export function App() {
             config={datos.config}
             registros={registros}
             onRegistrar={(e) => void alGuardar(desdeEvento(e))}
-            onRegistrarDesvio={(e, proteina, resumen) => void alGuardar({
+            onRegistrarDesvio={(e, porciones, proteina, resumen) => void alGuardar({
               fecha: fechaISO(),
               slotId: e.slotId!,
               // Sin optionId: no fue ninguna de las opciones del plan, y decir
               // que sí lo fue ensuciaría el historial que lee la nutricionista.
               optionId: null,
+              porciones,
               proteinGrams: proteina,
               esLibre: false,
               nota: resumen,

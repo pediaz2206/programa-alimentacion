@@ -2,6 +2,7 @@ import {
   buildDaySchedule,
   computeDailyBalance,
   freeMealSummary,
+  type ComidaDelDia,
   type MealOption,
   type NutritionPlan,
   type ScheduledEvent,
@@ -13,8 +14,13 @@ import {
  * versiones nuevas, asi que viaja como dato y estas funciones lo reciben.
  */
 
-export function agendaDe(plan: NutritionPlan, config: UserConfig, fecha: Date): ScheduledEvent[] {
-  return buildDaySchedule(plan, config, fecha);
+export function agendaDe(
+  plan: NutritionPlan,
+  config: UserConfig,
+  fecha: Date,
+  comidas: ComidaDelDia[] = [],
+): ScheduledEvent[] {
+  return buildDaySchedule(plan, config, fecha, comidas);
 }
 
 export function minutosAhora(d = new Date()): number {

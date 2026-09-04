@@ -8,6 +8,13 @@ export interface Registro {
   optionId: string | null;
   proteinGrams: number | null;
   esLibre: boolean;
+  /**
+   * Que grupo se cubrio con que equivalencia, cuando la comida no fue una
+   * opcion del plan. Es lo unico que permite despues aplicar las reglas que
+   * miran una comida para decidir la siguiente ("si el almuerzo tuvo hidrato,
+   * la cena va sin hidrato"): sin esto solo queda un resumen en texto.
+   */
+  porciones?: Record<string, string | null>;
   nota?: string;
   /** DataURL mientras no haya backend; despues, ruta en Storage. */
   foto?: string;

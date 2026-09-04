@@ -105,6 +105,28 @@ export interface MealSlot {
   notes?: string;
 }
 
+/**
+ * Una regla del plan que la app puede verificar sola.
+ *
+ * Las indicaciones de la nutricionista vienen en prosa. Algunas son consejo
+ * puro ("el aceite siempre en crudo") y viven en `guidelines`; otras se pueden
+ * comprobar contra lo que la persona registro, y esas se declaran aca en forma
+ * estructurada. `texto` guarda su redaccion original: la app calcula, pero
+ * quien habla en pantalla siempre es ella.
+ */
+export type ReglaPlan =
+  /** Un grupo que solo puede aparecer una vez al dia (frutos secos, palta). */
+  | { id: string; tipo: 'una-vez-al-dia'; groupId: string; texto: string }
+  /**
+   * Un grupo que se cierra en una comida si aparecio en otra:
+   * "si el almuerzo predomino el carbohidrato, en la cena evitar agregarlo".
+   */
+  | { id: string; tipo: 'no-repetir-en'; groupId: string; siEn: string; entonces: string; texto: string }
+  /** Un minimo diario a cubrir, con maximo opcional: "2 o 3 frutas por dia". */
+  | { id: string; tipo: 'minimo-diario'; groupId: string; minimo: number; maximo?: number; texto: string }
+  /** Las comidas libres no deberian caer todas el mismo dia. */
+  | { id: string; tipo: 'libres-espaciadas'; texto: string };
+
 export interface NutritionPlan {
   id: string;
   name: string;
@@ -119,6 +141,8 @@ export interface NutritionPlan {
   plateDefault?: PlateTarget;
   /** Notas generales del plan que conviene tener a mano. */
   guidelines?: string[];
+  /** Las indicaciones que la app puede verificar contra lo registrado. */
+  reglas?: ReglaPlan[];
   /** Objetivo diario de proteina en gramos, si el plan lo fija asi. */
   proteinTargetGrams?: number;
   /** Politica de comidas libres, si el plan contempla alguna. */
@@ -216,6 +240,15 @@ export interface ScheduledEvent {
   warnings?: string[];
   /** Esta comida esta marcada como del 20%: no sigue el plan. */
   freeMeal?: boolean;
+  /**
+   * Que dicen las reglas del plan para este momento, dado lo que ya se comio
+   * hoy. Vacio cuando la agenda se calcula sin registros.
+   */
+  reglas?: {
+    cerrados: { groupId: string; reglaId: string; motivo: string; texto: string }[];
+    pendientes: { groupId: string; faltan: number; reglaId: string; motivo: string; texto: string }[];
+    avisos: { reglaId: string; motivo: string; texto: string }[];
+  };
 }
 
 export interface GroupBalance {

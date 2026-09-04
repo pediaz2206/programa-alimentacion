@@ -1,3 +1,4 @@
+import { gruposDeOpcion } from './reglas.ts';
 import type { MealOption, NutritionPlan, Portions, UserConfig } from './types.ts';
 
 export interface SelectionContext {
@@ -9,6 +10,12 @@ export interface SelectionContext {
   avoidIds?: string[];
   /** Gramos de proteina que faltan para el objetivo del dia. */
   remainingProtein?: number;
+  /**
+   * Grupos que las reglas del plan cerraron para este momento. Las opciones que
+   * los traen bajan al final, pero no se descartan: si todas los traen, es
+   * mejor mostrar la menos mala con su aviso que dejar la pantalla vacia.
+   */
+  cerrados?: string[];
 }
 
 function hash(text: string): number {
@@ -74,15 +81,20 @@ export function suggestOptions(
   const rotated = [...pool.slice(offset), ...pool.slice(0, offset)];
 
   const avoid = new Set(ctx.avoidIds ?? []);
+  const cerrados = new Set(ctx.cerrados ?? []);
   const ranked = rotated
     .map((option, position) => ({
       option,
       position,
+      // Respetar la regla de la nutricionista pesa mas que no repetir plato.
+      incumple: cerrados.size > 0 && [...gruposDeOpcion(option)].some((g) => cerrados.has(g)) ? 1 : 0,
       repeated: avoid.has(option.id) ? 1 : 0,
       score: gapScore(option, ctx.remaining, ctx.remainingProtein),
     }))
     .sort(
-      (a, b) => a.repeated - b.repeated || b.score - a.score || a.position - b.position,
+      (a, b) =>
+        a.incumple - b.incumple || a.repeated - b.repeated ||
+        b.score - a.score || a.position - b.position,
     );
 
   return ranked.slice(0, Math.max(1, config.optionsPerSuggestion)).map((r) => r.option);
