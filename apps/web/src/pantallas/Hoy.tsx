@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
-  ajusteDeVentana, aplicarAjuste, estadoActual, humanizeMinutes,
-  type Desvio as DatosDesvio, type Ingredient, type Momento,
+  ajusteDeVentana, aplicarAjuste, detalleDe, estadoActual, humanizeMinutes,
+  type Desvio as DatosDesvio, type ExchangeOption, type Ingredient, type Momento,
   type NutritionPlan, type ScheduledEvent, type UserConfig,
 } from '@pa/core';
 import { Franja } from '../componentes/Franja.tsx';
@@ -19,7 +19,7 @@ interface Props {
   ahora: number;
   config: UserConfig;
   registros: Registro[];
-  onRegistrar: (evento: ScheduledEvent) => void;
+  onRegistrar: (evento: ScheduledEvent, cambios: Record<number, ExchangeOption>) => void;
   onRegistrarDesvio: (evento: ScheduledEvent, datos: DatosDesvio, proteina: number, resumen: string) => void;
   onIrARegistro: () => void;
   onIrAAjustes: () => void;
@@ -125,7 +125,7 @@ interface AhoraProps {
   momento: Momento;
   eventos: ScheduledEvent[];
   ahora: number;
-  onRegistrar: (e: ScheduledEvent) => void;
+  onRegistrar: (e: ScheduledEvent, cambios: Record<number, ExchangeOption>) => void;
   onRegistrarDesvio: (e: ScheduledEvent, datos: DatosDesvio, proteina: number, resumen: string) => void;
 }
 
@@ -133,6 +133,10 @@ function Ahora({ plan, momento, eventos, ahora, onRegistrar, onRegistrarDesvio }
   const { tipo, evento, faltan } = momento;
   const [desviando, setDesviando] = useState(false);
   const [sinIngrediente, setSinIngrediente] = useState<number | null>(null);
+  // Lo que se cambio de la comida de hoy, por posicion en la lista. Vive en la
+  // pantalla y no en el plan: el plan es de la nutricionista, esto es "hoy no
+  // tenia arroz".
+  const [cambios, setCambios] = useState<Record<number, ExchangeOption>>({});
 
   if (tipo === 'fin-del-dia' || !evento) {
     return (
@@ -192,21 +196,42 @@ function Ahora({ plan, momento, eventos, ahora, onRegistrar, onRegistrarDesvio }
           {evento.checklist.map((i: Ingredient, n: number) => (
             <li key={n}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, padding: '4px 0' }}>
-                <span style={{ flex: 1 }}>{i.item}</span>
-                <span className="cant mono">{i.qty != null ? `${i.qty} ${i.unit ?? ''}`.trim() : ''}</span>
+                <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
+                  {cambios[n] ? cambios[n]!.label : i.item}
+                  {cambios[n] && <span className="sello">cambiado</span>}
+                </span>
+                <span className="cant mono" style={{ flex: 'none' }}>
+                  {cambios[n]
+                    ? detalleDe(cambios[n]!)
+                    : (i.qty != null ? `${i.qty} ${i.unit ?? ''}`.trim() : '')}
+                </span>
                 <button
                   type="button"
                   className="item-accion"
-                  onClick={() => setSinIngrediente(sinIngrediente === n ? null : n)}
+                  style={{ flex: 'none' }}
+                  onClick={() => {
+                    // Si ya se cambio, el boton deshace: volver atras tiene que
+                    // costar lo mismo que equivocarse.
+                    if (cambios[n]) {
+                      const { [n]: _deshecho, ...resto } = cambios;
+                      setCambios(resto);
+                      return;
+                    }
+                    setSinIngrediente(sinIngrediente === n ? null : n);
+                  }}
                 >
-                  {sinIngrediente === n ? 'cerrar' : 'no tengo'}
+                  {cambios[n] ? 'volver' : sinIngrediente === n ? 'cerrar' : 'no tengo'}
                 </button>
               </div>
-              {sinIngrediente === n && (
+              {sinIngrediente === n && !cambios[n] && (
                 <Reemplazos
                   plan={plan}
                   ingrediente={i}
                   slotId={evento.slotId}
+                  onElegir={(ex) => {
+                    setCambios({ ...cambios, [n]: ex });
+                    setSinIngrediente(null);
+                  }}
                   onCerrar={() => setSinIngrediente(null)}
                 />
               )}
@@ -230,7 +255,7 @@ function Ahora({ plan, momento, eventos, ahora, onRegistrar, onRegistrarDesvio }
 
       {tipo === 'comer-ahora' && !desviando && (
         <>
-          <button className="boton boton-lleno boton-ancho" onClick={() => onRegistrar(evento)}>
+          <button className="boton boton-lleno boton-ancho" onClick={() => onRegistrar(evento, cambios)}>
             Registrar {evento.freeMeal ? 'la comida del 20%' : `“${opciones[0]?.name ?? 'la comida'}”`}
           </button>
           <button className="boton boton-ancho" onClick={() => setDesviando(true)}>

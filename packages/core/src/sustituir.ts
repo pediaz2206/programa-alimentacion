@@ -1,4 +1,4 @@
-import type { ExchangeOption, MealSlot, NutritionPlan } from './types.ts';
+import type { ExchangeOption, Ingredient, MealSlot, NutritionPlan } from './types.ts';
 
 /**
  * Salir del paso y reemplazar, con la tabla de equivalencias del propio plan.
@@ -109,4 +109,47 @@ export function detalleDe(ex: ExchangeOption): string {
   else if (ex.unit) partes.push(ex.unit);
   if (ex.proteinGrams != null) partes.push(`${ex.proteinGrams} g de proteína`);
   return partes.join(' · ');
+}
+
+/**
+ * Que grupos cubrio la comida, contando los reemplazos que se hicieron hoy.
+ *
+ * El indice es la posicion en el checklist, que es lo que la pantalla tiene a
+ * mano cuando alguien toca "no tengo". El resultado entra al mismo mapa de
+ * porciones que usan las reglas del dia y el resumen de consulta.
+ */
+export function porcionesDeChecklist(
+  checklist: Ingredient[],
+  cambios: Record<number, ExchangeOption>,
+): Record<string, string> {
+  const salida: Record<string, string> = {};
+  checklist.forEach((ingrediente, n) => {
+    const groupId = ingrediente.groupId;
+    if (!groupId) return;
+    const etiqueta = cambios[n]?.label ?? ingrediente.item;
+    const previo = salida[groupId];
+    salida[groupId] = previo ? `${previo}, ${etiqueta}` : etiqueta;
+  });
+  return salida;
+}
+
+/**
+ * Los cambios, en una frase para el historial.
+ *
+ * La nutricionista lee "Cambié arroz por lentejas" y entiende en un segundo lo
+ * que un mapa de grupos no le dice: que no fue un desvio, fue un intercambio de
+ * su propia tabla.
+ */
+export function textoDeCambios(
+  checklist: Ingredient[],
+  cambios: Record<number, ExchangeOption>,
+): string {
+  const partes = Object.entries(cambios)
+    .map(([n, ex]) => {
+      const original = checklist[Number(n)];
+      return original ? `${original.item} por ${ex.label.toLowerCase()}` : null;
+    })
+    .filter((p): p is string => p != null);
+  if (partes.length === 0) return '';
+  return `Cambié ${partes.join('; ')}.`;
 }

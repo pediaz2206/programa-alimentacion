@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import type { Medida, ScheduledEvent, UserConfig } from '@pa/core';
+import {
+  porcionesDeChecklist, textoDeCambios,
+  type ExchangeOption, type Medida, type ScheduledEvent, type UserConfig,
+} from '@pa/core';
 import { agendaDe, minutosAhora } from './lib/datos.ts';
 import { configEmpaquetada, planEmpaquetado } from './lib/semilla.ts';
 import {
@@ -260,7 +263,7 @@ export function App() {
             ahora={ahora}
             config={datos.config}
             registros={registros}
-            onRegistrar={(e) => void alGuardar(desdeEvento(e))}
+            onRegistrar={(e, cambios) => void alGuardar(desdeEvento(e, cambios))}
             onRegistrarDesvio={(e, porciones, proteina, resumen) => void alGuardar({
               fecha: fechaISO(),
               slotId: e.slotId!,
@@ -372,14 +375,27 @@ function leerTema(): Tema {
  * pantalla es friccion pura. Los ajustes finos (foto, nota, otra opcion) viven
  * en la pestaña Registro.
  */
-function desdeEvento(evento: ScheduledEvent): Fila {
+function desdeEvento(
+  evento: ScheduledEvent,
+  cambios: Record<number, ExchangeOption> = {},
+): Fila {
   const opcion = evento.suggestions?.[0];
+  const checklist = evento.checklist ?? [];
+  const hayCambios = Object.keys(cambios).length > 0;
+  const nota = textoDeCambios(checklist, cambios);
   return {
     fecha: fechaISO(),
     slotId: evento.slotId!,
     optionId: evento.freeMeal ? null : (opcion?.id ?? null),
+    // Solo se guardan las porciones si hubo un cambio: sin cambios, el
+    // optionId ya dice de que estuvo hecha la comida y repetirlo es ruido.
+    ...(hayCambios ? { porciones: porcionesDeChecklist(checklist, cambios) } : {}),
+    // La proteina no se recalcula. Una equivalencia es, por definicion del
+    // plan, intercambiable con las otras de su grupo: ese es el punto de la
+    // tabla. Inventar un numero nuevo seria contradecir a la nutricionista.
     proteinGrams: evento.freeMeal ? 0 : (opcion?.proteinGrams ?? null),
     esLibre: evento.freeMeal ?? false,
+    ...(nota ? { nota } : {}),
   };
 }
 

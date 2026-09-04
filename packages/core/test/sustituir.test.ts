@@ -91,3 +91,60 @@ test('el detalle de una equivalencia se lee como en el plan', () => {
   const papa = equivalenciasDe(plan, 'hidratos', 'almuerzo').find((o) => o.label === 'Papa chica')!;
   assert.equal(detalleDe(papa), '120 g en crudo');
 });
+
+// --- elegir el reemplazo, no solo mirarlo ---
+
+import { porcionesDeChecklist, textoDeCambios } from '../src/sustituir.ts';
+import type { Ingredient } from '../src/types.ts';
+
+const checklist: Ingredient[] = [
+  { item: 'Arroz', qty: 70, unit: 'g', groupId: 'hidratos' },
+  { item: 'Pollo', qty: 150, unit: 'g', groupId: 'proteinas' },
+  { item: 'Tomate', groupId: 'vegetales' },
+  { item: 'Lechuga', groupId: 'vegetales' },
+];
+
+const lentejas = { label: 'Lentejas, arvejas, porotos o garbanzos', qty: 70, unit: 'g en crudo' };
+
+test('sin cambios, las porciones son las de la comida tal cual', () => {
+  assert.deepEqual(porcionesDeChecklist(checklist, {}), {
+    hidratos: 'Arroz', proteinas: 'Pollo', vegetales: 'Tomate, Lechuga',
+  });
+});
+
+test('el reemplazo elegido reemplaza en las porciones', () => {
+  const p = porcionesDeChecklist(checklist, { 0: lentejas });
+  assert.equal(p['hidratos'], 'Lentejas, arvejas, porotos o garbanzos');
+  assert.equal(p['proteinas'], 'Pollo', 'lo que no se cambió queda igual');
+});
+
+test('cambiar uno de dos del mismo grupo conserva al otro', () => {
+  const p = porcionesDeChecklist(checklist, { 2: { label: 'Zanahoria' } });
+  assert.equal(p['vegetales'], 'Zanahoria, Lechuga');
+});
+
+test('un ingrediente sin grupo no aporta porciones', () => {
+  assert.deepEqual(porcionesDeChecklist([{ item: 'Sal' }], {}), {});
+});
+
+test('los cambios se cuentan en una frase que se lee sola', () => {
+  assert.equal(
+    textoDeCambios(checklist, { 0: lentejas }),
+    'Cambié Arroz por lentejas, arvejas, porotos o garbanzos.',
+  );
+});
+
+test('varios cambios entran en la misma frase', () => {
+  const t = textoDeCambios(checklist, { 0: lentejas, 1: { label: 'Pescado' } });
+  assert.match(t, /Arroz por lentejas/);
+  assert.match(t, /Pollo por pescado/);
+});
+
+test('sin cambios no hay frase que agregar', () => {
+  assert.equal(textoDeCambios(checklist, {}), '');
+});
+
+test('un indice que ya no existe no rompe la frase', () => {
+  // La comida sugerida puede cambiar entre que se elige y se registra.
+  assert.equal(textoDeCambios(checklist, { 9: lentejas }), '');
+});
