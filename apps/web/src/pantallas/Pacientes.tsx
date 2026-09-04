@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { validatePlan, type NutritionPlan } from '@pa/core';
 import {
-  metricasDe, misPacientes, planesParaCopiar, publicarVersion,
+  consultaDe, metricasDe, misPacientes, planesParaCopiar, publicarVersion,
   type Metricas, type Paciente,
 } from '../lib/profesional.ts';
 import { invitarPaciente } from '../lib/vinculos.ts';
@@ -10,6 +10,7 @@ import { Seccion } from '../componentes/Seccion.tsx';
 import { Aviso } from '../componentes/Aviso.tsx';
 import { Encabezado } from '../componentes/Encabezado.tsx';
 import { Avatar } from '../componentes/Avatar.tsx';
+import { Consulta } from '../componentes/Consulta.tsx';
 
 export function Pacientes({ sesion, pacienteAbierto, onAbrir }: {
   sesion: Session | null;
@@ -102,6 +103,7 @@ function Detalle({ paciente, pacientes, sesion, onVolver }: {
   paciente: Paciente; pacientes: Paciente[]; sesion: Session | null; onVolver: () => void;
 }) {
   const m = metricasDe(paciente);
+  const consulta = consultaDe(paciente);
   return (
     <>
       <button className="volver" onClick={onVolver}>
@@ -121,6 +123,8 @@ function Detalle({ paciente, pacientes, sesion, onVolver }: {
       {m ? <Panel metricas={m} /> : (
         <section className="tarjeta"><p className="vacio">Sin plan activo.</p></section>
       )}
+
+      {consulta && <Consulta resumen={consulta} nombre={paciente.nombre} />}
 
       <Seccion titulo="Últimos días" resumen={`${paciente.registros.length} comidas registradas`}>
         {paciente.registros.length === 0

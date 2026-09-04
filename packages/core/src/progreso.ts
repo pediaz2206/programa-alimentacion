@@ -101,7 +101,10 @@ export function tendencia(
   const magnitud = `${Math.abs(cambio).toFixed(1).replace('.', ',')} ${unidad}`;
   const resumen =
     direccion === 'estable'
-      ? `${que} se mantiene: ${magnitud} de diferencia entre las dos mitades del período.`
+      // "0,0 kg de diferencia" no informa nada: si el redondeo lo borra, se dice.
+      ? Math.abs(cambio) < 0.05
+        ? `${que} se mantiene sin cambios en el período.`
+        : `${que} se mantiene: ${magnitud} de diferencia entre las dos mitades del período.`
       : direccion === 'baja'
         ? `${que} bajó ${magnitud} respecto del promedio anterior.`
         : `${que} subió ${magnitud} respecto del promedio anterior.`;

@@ -113,3 +113,8 @@ test('suavizada ignora los dias sin ese campo', () => {
   const s = suavizada([m('2026-09-01', 80), m('2026-09-08', undefined, 92), m('2026-09-15', 79)]);
   assert.deepEqual(s.map((p) => p.fecha), ['2026-09-01', '2026-09-15']);
 });
+
+test('un cambio que el redondeo borra no se reporta como "0,0 de diferencia"', () => {
+  const t = tendencia([m('2026-09-01', 80), m('2026-09-08', 80), m('2026-09-15', 80), m('2026-09-22', 80)]);
+  assert.equal(t.resumen, 'El peso se mantiene sin cambios en el período.');
+});

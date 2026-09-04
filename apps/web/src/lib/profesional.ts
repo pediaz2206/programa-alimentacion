@@ -1,7 +1,9 @@
 import type { Session } from '@supabase/supabase-js';
 import {
-  adherencia, librasUsadas, proteinaPromedio, racha, ultimosDias,
-  type ComidaRegistrada, type NutritionPlan,
+  adherencia, comidasEsperadas, librasUsadas, proteinaPromedio, racha,
+  resumenDeConsulta, ultimosDias, DIAS_CONSULTA,
+  type ComidaDeConsulta, type Medida, type NutritionPlan, type ResumenConsulta,
+  type UserConfig,
 } from '@pa/core';
 import { supabase } from './supabase.ts';
 import { fechaISO } from './registro.ts';
@@ -18,7 +20,10 @@ export interface Paciente {
   email: string;
   foto: string | null;
   plan: NutritionPlan | null;
-  registros: ComidaRegistrada[];
+  /** La config del paciente: sin ella no se sabe que comidas tiene de verdad. */
+  config: UserConfig | null;
+  registros: ComidaDeConsulta[];
+  medidas: Medida[];
 }
 
 export interface Metricas {
@@ -29,7 +34,7 @@ export interface Metricas {
   dias: string[];
 }
 
-const DIAS_VENTANA = 7;
+const DIAS_VENTANA = DIAS_CONSULTA;
 
 export async function misPacientes(sesion: Session | null): Promise<Paciente[]> {
   if (!supabase || !sesion) return [];
@@ -48,13 +53,17 @@ export async function misPacientes(sesion: Session | null): Promise<Paciente[]> 
   const desde = ultimosDias(fechaISO(), DIAS_VENTANA)[0]!;
   // Dos consultas para todos, no dos por paciente: una lista de veinte
   // pacientes no puede disparar cuarenta viajes al servidor.
-  const [{ data: logs }, { data: planes }] = await Promise.all([
+  const [{ data: logs }, { data: planes }, { data: configs }, { data: medidas }] = await Promise.all([
     supabase.from('meal_logs')
-      .select('patient_id, local_date, slot_id, protein_grams, is_free_meal')
+      .select('patient_id, local_date, slot_id, option_id, portions, protein_grams, is_free_meal, note, photo_path')
       .in('patient_id', ids).gte('local_date', desde),
     supabase.from('plans')
       .select('patient_id, plan_versions(version, doc)')
       .in('patient_id', ids).eq('is_active', true),
+    supabase.from('configs').select('patient_id, doc').in('patient_id', ids),
+    supabase.from('body_measurements')
+      .select('patient_id, local_date, weight_kg, waist_cm')
+      .in('patient_id', ids).gte('local_date', desde),
   ]);
 
   const planPorPaciente = new Map<string, NutritionPlan>();
@@ -64,17 +73,38 @@ export async function misPacientes(sesion: Session | null): Promise<Paciente[]> 
     if (ultima) planPorPaciente.set(p['patient_id'] as string, ultima.doc);
   }
 
-  const logsPorPaciente = new Map<string, ComidaRegistrada[]>();
+  const configPorPaciente = new Map<string, UserConfig>();
+  for (const c of configs ?? []) configPorPaciente.set(c['patient_id'] as string, c['doc'] as UserConfig);
+
+  const logsPorPaciente = new Map<string, ComidaDeConsulta[]>();
   for (const l of logs ?? []) {
     const uid = l['patient_id'] as string;
     const lista = logsPorPaciente.get(uid) ?? [];
     lista.push({
       fecha: l['local_date'] as string,
       slotId: l['slot_id'] as string,
+      optionId: (l['option_id'] as string | null) ?? null,
+      porciones: (l['portions'] as Record<string, string | null> | null) ?? null,
       proteinGrams: l['protein_grams'] as number | null,
       esLibre: Boolean(l['is_free_meal']),
+      nota: (l['note'] as string | null) ?? null,
+      // La ruta, no una URL firmada: firmar cien fotos que quiza nadie abra
+      // es caro. Se firma al desplegar el dia.
+      foto: (l['photo_path'] as string | null) ?? null,
     });
     logsPorPaciente.set(uid, lista);
+  }
+
+  const medidasPorPaciente = new Map<string, Medida[]>();
+  for (const m of medidas ?? []) {
+    const uid = m['patient_id'] as string;
+    const lista = medidasPorPaciente.get(uid) ?? [];
+    lista.push({
+      fecha: m['local_date'] as string,
+      pesoKg: m['weight_kg'] != null ? Number(m['weight_kg']) : null,
+      cinturaCm: m['waist_cm'] != null ? Number(m['waist_cm']) : null,
+    });
+    medidasPorPaciente.set(uid, lista);
   }
 
   return (vinculos ?? []).map((v) => {
@@ -87,23 +117,43 @@ export async function misPacientes(sesion: Session | null): Promise<Paciente[]> 
       email,
       foto: fotoDe(v['profiles']),
       plan: planPorPaciente.get(id) ?? null,
+      config: configPorPaciente.get(id) ?? null,
       registros: logsPorPaciente.get(id) ?? [],
+      medidas: medidasPorPaciente.get(id) ?? [],
     };
   });
 }
 
-export function metricasDe(paciente: Paciente): Metricas | null {
+export function metricasDe(paciente: Paciente, dias = 7): Metricas | null {
   if (!paciente.plan) return null;
   const hoy = fechaISO();
-  const dias = ultimosDias(hoy, DIAS_VENTANA);
-  const comidasPorDia = paciente.plan.slots.filter((s) => s.id !== 'colacion').length;
+  const rango = ultimosDias(hoy, dias);
+  // Antes se contaban los slots del plan. Quien hace ayuno sin desayuno tiene
+  // el slot declarado y apagado: contarlo le hunde la adherencia a un techo
+  // que no puede superar por mas que registre todo.
+  const esperadas = paciente.config
+    ? comidasEsperadas(paciente.plan, paciente.config, rango)
+    : paciente.plan.slots.filter((s) => !s.isSnack).length * rango.length;
   return {
-    adherencia: adherencia(paciente.registros, comidasPorDia, dias),
+    adherencia: {
+      registradas: paciente.registros.filter((r) => rango.includes(r.fecha)).length,
+      esperadas,
+      porcentaje: esperadas === 0 ? 0
+        : Math.round((paciente.registros.filter((r) => rango.includes(r.fecha)).length / esperadas) * 100),
+    },
     racha: racha(paciente.registros, hoy),
-    proteina: proteinaPromedio(paciente.plan, paciente.registros, dias),
-    libres: librasUsadas(paciente.registros, dias),
-    dias,
+    proteina: proteinaPromedio(paciente.plan, paciente.registros, rango),
+    libres: librasUsadas(paciente.registros, rango),
+    dias: rango,
   };
+}
+
+/** El resumen para leer antes de la consulta. Necesita plan y config. */
+export function consultaDe(paciente: Paciente): ResumenConsulta | null {
+  if (!paciente.plan || !paciente.config) return null;
+  return resumenDeConsulta(
+    paciente.plan, paciente.config, paciente.registros, paciente.medidas, fechaISO(),
+  );
 }
 
 /** Los planes que la profesional puede copiar: el suyo y el de sus pacientes. */

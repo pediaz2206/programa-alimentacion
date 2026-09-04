@@ -1,4 +1,5 @@
-import type { NutritionPlan } from './types.ts';
+import { resolveSlots } from './schedule.ts';
+import type { MealSlot, NutritionPlan, UserConfig } from './types.ts';
 
 /**
  * Metricas del seguimiento.
@@ -15,6 +16,31 @@ export interface ComidaRegistrada {
   slotId: string;
   proteinGrams?: number | null;
   esLibre?: boolean;
+}
+
+/**
+ * Los momentos que esta persona realmente tiene, no los que el plan trae.
+ *
+ * Pablo hace 16:8 sin desayuno: el plan declara el slot, su config lo apaga.
+ * Contar el desayuno como esperado le baja la adherencia al 75% haga lo que
+ * haga, y en el resumen de consulta le dice a la nutricionista que se saltea
+ * una comida que nadie le indico. Es el mismo error contado de dos formas.
+ */
+export function slotsEsperados(plan: NutritionPlan, config: UserConfig, fecha: Date): MealSlot[] {
+  return resolveSlots(plan, config, fecha)
+    .map((r) => r.slot)
+    .filter((s) => !s.isSnack);
+}
+
+/** Cuantas comidas se esperaban en todo el rango, dia por dia. */
+export function comidasEsperadas(plan: NutritionPlan, config: UserConfig, dias: string[]): number {
+  return dias.reduce((total, dia) => total + slotsEsperados(plan, config, fechaLocal(dia)).length, 0);
+}
+
+/** "2026-09-08" a Date local, sin que el huso lo corra un dia. */
+export function fechaLocal(iso: string): Date {
+  const [a, m, d] = iso.split('-').map(Number);
+  return new Date(a!, m! - 1, d!);
 }
 
 export interface Adherencia {

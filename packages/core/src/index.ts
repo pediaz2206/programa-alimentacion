@@ -7,6 +7,7 @@ export * from './selection.ts';
 export * from './balance.ts';
 export * from './schedule.ts';
 export * from './compras.ts';
+export * from './consulta.ts';
 export * from './libres.ts';
 export * from './metricas.ts';
 export * from './progreso.ts';
