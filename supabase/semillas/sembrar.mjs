@@ -19,7 +19,23 @@
  * por fecha, que es exactamente como se borra de mas.
  */
 import { readFileSync } from 'node:fs';
-import { createClient } from '@supabase/supabase-js';
+
+// Antes del import de supabase-js: en Node 20 su cliente falla al construirse
+// porque no encuentra WebSocket, y el stack trace habla de realtime-js, que no
+// tiene nada que ver con sembrar datos. El error util es este.
+const [major, minor] = process.versions.node.split('.').map(Number);
+if (!(major > 22 || (major === 22 && minor >= 6))) {
+  console.error(`
+  Node ${process.versions.node} es muy viejo para este proyecto.
+
+  Hace falta Node >= 22.6, igual que el resto del repo.
+
+    nvm use          # la version esperada esta en .nvmrc
+`);
+  process.exit(1);
+}
+
+const { createClient } = await import('@supabase/supabase-js');
 import { DOMINIO, email, PACIENTES, PROFESIONALES, VINCULOS } from './personajes.mjs';
 import { historiaDe } from './historia.mjs';
 
