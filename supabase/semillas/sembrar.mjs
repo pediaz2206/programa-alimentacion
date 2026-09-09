@@ -42,6 +42,10 @@ import { historiaDe } from './historia.mjs';
 const url = process.env['SUPABASE_URL'];
 const clave = process.env['SUPABASE_SERVICE_ROLE_KEY'];
 const borrar = process.argv.includes('--borrar');
+// Las cuentas de prueba no entran por Google, asi que sin esto no hay forma de
+// mirar la vista profesional: hace falta que una cuenta real sea la
+// profesional de los pacientes sembrados.
+const comoProfesional = (process.argv.find((a) => a.startsWith('--profesional=')) ?? '').split('=')[1];
 
 if (!url || !clave) {
   console.error(`
@@ -203,6 +207,8 @@ async function sembrar() {
     console.log(`  ${p.slug}: ${comidas.length} comidas, ${medidas.length} mediciones`);
   }
 
+  if (comoProfesional) await sumarProfesionalReal(comoProfesional, ids);
+
   console.log(`
 Listo. Las cuentas de prueba no pueden iniciar sesión con Google —el dominio
 ${DOMINIO} no existe—, así que sirven para ver la app desde la vista
@@ -211,6 +217,56 @@ cuentas de Google reales.
 
 Para deshacer:  node supabase/semillas/sembrar.mjs --borrar
 `);
+}
+
+/**
+ * Ata una cuenta real como profesional de los pacientes sembrados.
+ *
+ * Es la unica forma de mirar la vista profesional con datos: las cuentas de
+ * prueba no pueden iniciar sesion. Toca una cuenta real, asi que lo dice.
+ */
+async function sumarProfesionalReal(correo, ids) {
+  console.log(`\nCuenta real como profesional: ${correo}`);
+  const buscado = correo.toLowerCase();
+  let uid = null;
+  for (let pagina = 1; ; pagina++) {
+    const { data, error } = await db.auth.admin.listUsers({ page: pagina, perPage: 200 });
+    if (error) throw error;
+    const encontrada = data.users.find((u) => u.email?.toLowerCase() === buscado);
+    if (encontrada) { uid = encontrada.id; break; }
+    if (data.users.length < 200) break;
+  }
+  if (!uid) {
+    console.error(`  No existe esa cuenta. Tiene que haber entrado a la app con Google al menos una vez.`);
+    return;
+  }
+
+  const { error: eP } = await db.from('profiles').update({ is_professional: true }).eq('id', uid);
+  if (eP) throw eP;
+  console.log('  marcada como profesional');
+
+  for (const p of PACIENTES) {
+    const fila = {
+      professional_id: uid,
+      patient_id: ids.get(p.slug),
+      patient_email: email(p.slug),
+      status: 'active',
+      accepted_at: new Date().toISOString(),
+      consent_granted_at: new Date().toISOString(),
+      consent_version: 'v1',
+    };
+    const { data: existe } = await db.from('care_relationships')
+      .select('id').eq('professional_id', uid).ilike('patient_email', fila.patient_email).limit(1);
+    const { error } = existe?.length
+      ? await db.from('care_relationships').update(fila).eq('id', existe[0].id)
+      : await db.from('care_relationships').insert(fila);
+    if (error) throw new Error(`care_relationships: ${error.message}`);
+    console.log(`  ${correo} → ${p.slug}`);
+  }
+  console.log(`
+  Entrá con esa cuenta y vas a ver la pestaña Pacientes con los cuatro.
+  Al borrar la semilla, los vínculos se van con las cuentas; el permiso de
+  profesional queda: para sacarlo, profiles.is_professional = false.`);
 }
 
 /** El plan activo del paciente, creandolo la primera vez. */

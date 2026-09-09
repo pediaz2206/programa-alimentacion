@@ -15,6 +15,22 @@ node supabase/semillas/sembrar.mjs
 
 Para deshacer, el mismo comando con `--borrar`.
 
+## Verlo desde la vista profesional
+
+Las cuentas de prueba no pueden iniciar sesión, así que para mirar la vista
+profesional hace falta que una cuenta real sea la profesional de los pacientes
+sembrados:
+
+```bash
+... node supabase/semillas/sembrar.mjs --profesional=vos@gmail.com
+```
+
+Esa cuenta tiene que haber entrado a la app con Google al menos una vez. Queda
+marcada como profesional y vinculada a los cuatro pacientes, activa y
+consentida. Al borrar la semilla los vínculos se van con las cuentas; el
+permiso de profesional queda —`profiles.is_professional = false` para sacarlo—,
+porque es una cuenta real y borrarle permisos por las dudas es peor.
+
 Antes hace falta haber corrido `supabase/migraciones/005-datos-de-prueba.sql`,
 que agrega la marca `profiles.es_prueba`.
 
