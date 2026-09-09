@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [1]
+stepsCompleted: [1, 2]
 inputDocuments:
   - _bmad-output/planning-artifacts/prds/prd-programa-alimentacion-2026-09-09/prd.md
   - _bmad-output/planning-artifacts/architecture/architecture-programa-alimentacion-2026-09-09/ARCHITECTURE-SPINE.md
@@ -122,8 +122,84 @@ Sin plantilla inicial: es brownfield sobre un repositorio existente.
 
 ### Mapa de cobertura de FR
 
-Pendiente: se completa en el paso 2, al diseñar las épicas.
+| FR | Épica | Qué entrega |
+|---|---|---|
+| FR-28..FR-31 | 1 | Acceso de prueba: Silvestre entra |
+| FR-1..FR-10, FR-14, FR-15 | 2 | Roles, matrícula y control de acceso |
+| FR-11..FR-13, FR-33 | 3 | Circuito de propuestas |
+| FR-23..FR-27, FR-32 | 4 | Composición corporal multi-fuente |
+| FR-16..FR-22 | 5 | Las dos vistas profesionales |
+| FR-34..FR-36 | 6 | Fricción del uso diario |
+
+Los 36 FR quedan cubiertos. Ningún FR aparece en dos épicas.
+
+**Requisitos de UX por épica:** UX-DR10 → 2 · UX-DR4 → 5 · UX-DR2, DR3, DR7, DR9, DR11 → 6.
+
+**Ya construidos, sin historia**: UX-DR1 (Regla del plan), UX-DR5 (fila de dos
+columnas), UX-DR12 (voz) y UX-DR13 (tokens) documentan lo que ya existe en el código.
+Entran como criterio de aceptación de otras historias, no como trabajo propio.
 
 ## Lista de épicas
 
-Pendiente: se completa en el paso 2.
+### Épica 1: Silvestre entra y recorre la app
+
+Una cuenta de prueba puede iniciar sesión sin Google, con una sesión real, y recorrer
+la app con un mes de datos ya sembrados. Es lo más chico que destraba el feedback, y
+no depende de ninguna otra épica.
+
+**FR cubiertos:** FR-28, FR-29, FR-30, FR-31
+**Notas:** AD-4 manda: el formulario se compila solo con `VITE_LOGIN_PRUEBA`, que se
+enciende únicamente en vista previa. La semilla ya existe y solo hay que sumarle
+contraseñas al azar mostradas una vez.
+
+### Épica 2: Roles, matrícula y control de acceso
+
+Una persona se declara nutricionista o entrenador con su matrícula, el sistema sabe
+qué puede hacer cada rol, y el paciente ve en un solo lugar quién lo ve y puede
+cortarlo cuando quiera.
+
+**FR cubiertos:** FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-14, FR-15
+**Notas:** AD-1 y AD-5. Incluye migrar las cuentas con `is_professional` y partir
+`has_care_access` en ver y prescribir. UX-DR10: se entra siempre como paciente; lo
+profesional es una pestaña.
+
+### Épica 3: El entrenador propone, la nutricionista firma
+
+Un entrenador deja una propuesta de cambio de plan con su motivo; la nutricionista la
+aprueba y sale una versión nueva firmada por ella, o la descarta con una respuesta. El
+paciente nunca ve una propuesta que no rige.
+
+**FR cubiertos:** FR-11, FR-12, FR-13, FR-33
+**Notas:** AD-2 (la transición va en `aprobar_propuesta()`, en una transacción) y AD-6
+(quién lee una propuesta).
+
+### Épica 4: Medir el cuerpo desde donde se pueda
+
+Pliegues, bioimpedancia o circunferencias: se registra lo que haya, se guarda de dónde
+salió y quién lo cargó, y la tendencia se lee por promedios. Vale para el paciente solo,
+sin depender de ninguna vista profesional.
+
+**FR cubiertos:** FR-23, FR-24, FR-25, FR-26, FR-27, FR-32
+**Notas:** AD-3. Incluye migrar `body_measurements` y que la lista blanca viva en
+`packages/core` con el `check` generado desde ahí.
+
+### Épica 5: Cada profesional ve su pregunta contestada
+
+La nutricionista abre una ficha y sabe si la persona está asimilando el plan. El
+entrenador abre la misma ficha y sabe si el trabajo está produciendo un cambio. Dos
+vistas distintas sobre los mismos datos.
+
+**FR cubiertos:** FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22
+**Notas:** Las dos vistas comparten la pantalla de ficha, así que van juntas para no
+tocar los mismos archivos dos veces. El cruce adherencia × cambio (FR-20) es cálculo de
+`packages/core`, no de pantalla.
+
+### Épica 6: Que deje de sentirse rebuscada
+
+Las sugerencias se eligen tocándolas, los reemplazos frecuentes se recuerdan, se
+reconoce la constancia sin puntuar la comida, y las pantallas dicen una cosa cada una.
+
+**FR cubiertos:** FR-34, FR-35, FR-36
+**Notas:** Sale del descubrimiento de UX. Incluye UX-DR7 (densidad, la molestia número
+uno declarada) y UX-DR9 (piso de accesibilidad). Es la única épica que mejora lo que ya
+existe en vez de agregar algo nuevo.
