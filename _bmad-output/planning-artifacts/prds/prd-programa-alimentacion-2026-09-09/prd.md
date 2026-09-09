@@ -1,6 +1,6 @@
 ---
 title: "En Punto — Roles profesionales y vistas por rol"
-status: draft
+status: final
 created: 2026-09-09
 updated: 2026-09-09
 ---
@@ -72,9 +72,9 @@ consulta sabiendo por dónde empezar.
 **Existe hoy** como resumen de consulta. Lo que falta es que sea *su* vista y no una
 genérica.
 
-### UJ-3 — Ernesto revisa si el trabajo está rindiendo
+### UJ-3 — Silvestre revisa si el trabajo está rindiendo
 
-Ernesto entrena a Pablo tres veces por semana. Cada dos semanas le mide pliegues al
+Silvestre entrena a Pablo tres veces por semana. Cada dos semanas le mide pliegues al
 final de la sesión y los carga desde el teléfono. Abre En Punto y no le interesa qué
 comió el martes: quiere saber si el mes sirvió. Ve que el peso se movió medio kilo
 —nada— pero que la cintura bajó dos centímetros y el brazo subió uno. Eso es
@@ -149,11 +149,15 @@ por ella.
   - adherencia baja y sin cambio → el plan no llegó a probarse
   - adherencia alta con cambio → seguir así
   - adherencia baja con cambio → hay algo más operando; conviene entenderlo
-- **FR-21** Ve la adherencia y el peso, pero no el detalle de cada comida. Lo que
-  necesita para su trabajo, no todo lo que hay. [ASSUMPTION] Confirmar con el socio:
-  puede que quiera ver los desvíos para entender el rendimiento en la sesión.
+- **FR-21** Ve adherencia, constancia de registro y **proteína contra objetivo**: es
+  de lo que está hecho el músculo, y es lo primero que el entrenador busca. No ve el
+  detalle plato por plato. [ASSUMPTION] Falta confirmar con el socio si quiere además
+  los desvíos, para entender por qué rindió mal una sesión.
 - **FR-22** Puede registrar mediciones corporales del paciente y dejar propuestas.
   No carga rutinas ni entrenamientos: eso es otro producto y otro épico.
+- **FR-33** Una propuesta la leen su autor y quien puede prescribir para ese paciente.
+  Nadie más, el paciente incluido: un cambio que todavía no rige no puede llegarle como
+  si fuera una indicación.
 
 ### F. Composición corporal
 
@@ -168,6 +172,10 @@ por ella.
 - **FR-27** El registro guarda de dónde salió cada número y quién lo cargó. Un
   pliegue medido por el entrenador y una balanza de casa no tienen la misma
   confiabilidad, y quien lee la tendencia tiene que poder saberlo.
+- **FR-32** Dos mediciones del mismo día y del mismo tipo pero de distinto origen
+  conviven. El pliegue que carga el entrenador no reemplaza la lectura de balanza que
+  cargó la persona: si una pisara a la otra, se perdería justo lo que FR-27 existe
+  para conservar.
 
 ### G. Acceso de prueba
 
@@ -180,6 +188,22 @@ por ella.
   ellas: aunque alguien entre, no alcanza datos de ninguna persona real.
 - **FR-31** Las credenciales de prueba se generan al azar y se muestran una sola vez,
   al sembrarlas. No viven en el repositorio.
+
+### H. Fricción del uso diario
+
+Sale del descubrimiento de UX, donde Pablo describió la app como "poco usable, muy
+rebuscada". Son capacidades, no retoques visuales.
+
+- **FR-34** Las opciones sugeridas para una comida son elegibles: tocar una la convierte
+  en la comida de ese momento y el checklist se rearma. Hoy se muestran como texto y
+  solo la primera es accionable.
+- **FR-35** La app recuerda los reemplazos que esa persona ya usó y los ofrece primero.
+  Cambiar arroz por lentejas todas las semanas no debería costar lo mismo la décima vez
+  que la primera.
+- **FR-36** Se reconoce la constancia de registrar —días seguidos, primer mes, primera
+  medición— y nunca se puntúa lo que se comió. Un desvío o una comida del 20% no hacen
+  perder nada: si registrar honestamente costara algo, se dejaría de registrar
+  honestamente, y con eso se pierde el dato que la profesional necesita.
 
 ## Requisitos no funcionales
 
@@ -231,12 +255,15 @@ Del épico, medibles con el socio adentro:
 1. **Dos nutricionistas sobre el mismo paciente.** Hoy gana la última publicación,
    auditado pero sin guardas. ¿Se bloquea, se avisa, o se acepta mostrando quién
    publicó qué?
-2. **Cuánto del plan de comidas ve el entrenador.** Ver el plan completo es razonable
-   para proponer sobre él, pero es información de salud. FR-21 asume el corte
-   restrictivo; confirmar con el socio.
+2. **Cuánto del plan de comidas ve el entrenador.** El descubrimiento de UX ya movió
+   FR-21: la proteína entra, porque es lo primero que él busca. Queda si además quiere
+   los desvíos plato por plato. Es la pregunta que la pieza para Silvestre le devuelve
+   a él, que es quien puede contestarla.
 3. **Baja de un profesional.** Si una nutricionista deja el equipo, sus planes
    publicados siguen rigiendo. ¿Quién los hereda?
-4. **Confiabilidad desigual de las fuentes de composición.** FR-27 guarda el origen,
-   pero falta decidir si la pantalla mezcla fuentes en una misma curva o las separa.
+4. **Cómo se dibujan las series con fuentes mezcladas.** Cerrado del lado del dato:
+   FR-27 guarda el origen y FR-32 impide que una fuente pise a otra. Queda abierta la
+   presentación —una curva por fuente, o una con la fuente marcada en cada punto—, que
+   decide UX.
 5. **Responsabilidad profesional.** Con terceros pagando, hace falta definir qué dice
    la app sobre su propio alcance y qué acepta el profesional al publicar un plan.

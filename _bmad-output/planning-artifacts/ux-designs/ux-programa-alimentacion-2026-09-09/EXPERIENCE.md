@@ -177,7 +177,7 @@ de lo que este producto quiere hacer.
    incumplida tres veces. Cada uno con las fechas. ← *climax*
 5. Entra a la consulta sabiendo qué preguntar.
 
-### KF-3 — Ernesto revisa si el trabajo rinde (climax: la lectura, no los números)
+### KF-3 — Silvestre revisa si el trabajo rinde (climax: la lectura, no los números)
 
 1. Martes, 20:00, terminó de entrenar a Pablo. Le midió pliegues.
 2. Abre la ficha y **carga la medición** desde el teléfono, en la sesión.
