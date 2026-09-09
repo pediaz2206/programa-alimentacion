@@ -191,3 +191,17 @@ test('sin cambios pero con buena adherencia si señala al plan', () => {
     .puntos.find((x) => x.id === 'sin-cambios');
   assert.match(p!.detalle, /no movió la aguja/);
 });
+
+test('la adherencia no puede pasar del 100% por colacionar de mas', () => {
+  // Las colaciones son opcionales: quedan fuera de lo esperado, así que
+  // contarlas al registrar daba 101%, un número que no significa nada.
+  const planConColacion = JSON.parse(readFileSync('data/plan.ejemplo.json', 'utf8')) as NutritionPlan;
+  const configConColacion = JSON.parse(readFileSync('data/config.ejemplo.json', 'utf8')) as UserConfig;
+  const todosLosSlots = configConColacion.slots.filter((s) => s.enabled !== false).map((s) => s.slotId);
+  const comidas: ComidaDeConsulta[] = dias(1, 28).flatMap((fecha) =>
+    todosLosSlots.map((slotId) => ({ fecha, slotId, proteinGrams: 30, esLibre: false })));
+
+  const r = resumenDeConsulta(planConColacion, configConColacion, comidas, [], HASTA);
+  assert.ok(r.adherencia.porcentaje <= 100, `dio ${r.adherencia.porcentaje}%`);
+  assert.equal(r.adherencia.porcentaje, 100);
+});

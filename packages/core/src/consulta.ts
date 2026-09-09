@@ -77,10 +77,18 @@ export function resumenDeConsulta(
   // Los momentos que esta persona realmente tiene: el plan puede declarar un
   // desayuno que su config apaga, y contarlo desvirtua todo lo que sigue.
   const esperadas = comidasEsperadas(plan, config, rango);
+  // Y el numerador tiene que contar lo mismo que el denominador. Las
+  // colaciones son opcionales y quedan fuera de lo esperado; si igual se
+  // cuentan al registrar, alguien que ademas colaciona llega al 101% de
+  // adherencia, que es un numero que no significa nada.
+  const cuentanParaAdherencia = new Set(
+    rango.flatMap((dia) => slotsEsperados(plan, config, fechaLocal(dia)).map((s) => s.id)),
+  );
+  const registradas = enRango.filter((c) => cuentanParaAdherencia.has(c.slotId)).length;
   const ad: Adherencia = {
-    registradas: enRango.length,
+    registradas,
     esperadas,
-    porcentaje: esperadas === 0 ? 0 : Math.round((enRango.length / esperadas) * 100),
+    porcentaje: esperadas === 0 ? 0 : Math.round((registradas / esperadas) * 100),
   };
   const prot = proteinaPromedio(plan, enRango, rango);
   const lib = librasUsadas(enRango, rango);

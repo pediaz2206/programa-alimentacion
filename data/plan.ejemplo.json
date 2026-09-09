@@ -5,7 +5,41 @@
   "guidelines": [
     "El método del plato aplica a almuerzo y cena; desayuno y merienda se arman por porciones.",
     "Si una comida queda corta de proteína, compensar en la siguiente colación.",
-    "Agua como bebida habitual: 2 a 2,5 L por día."
+    "Agua como bebida habitual: 2 a 2,5 L por día.",
+    "Requerimiento proteico: 110 g de proteína por día. Si un día queda un poco por debajo no pasa nada.",
+    "Frutos secos, palta o aceite: una sola vez al día. Elegir una opción y decidir en qué comida usarla.",
+    "Si el almuerzo llevó carbohidrato, la cena va sin agregarlo.",
+    "Intentar consumir 2 frutas por día.",
+    "Las comidas libres se reparten en la semana: evitar hacerlas todas el mismo día."
+  ],
+  "proteinTargetGrams": 110,
+  "reglas": [
+    {
+      "id": "grasas-una-vez",
+      "tipo": "una-vez-al-dia",
+      "groupId": "grasas",
+      "texto": "Frutos secos, palta o aceite: una sola vez al día. Elegir una opción y decidir en qué comida usarla."
+    },
+    {
+      "id": "carbo-cena",
+      "tipo": "no-repetir-en",
+      "groupId": "carbohidratos",
+      "siEn": "almuerzo",
+      "entonces": "cena",
+      "texto": "Si el almuerzo llevó carbohidrato, la cena va sin agregarlo."
+    },
+    {
+      "id": "frutas-dia",
+      "tipo": "minimo-diario",
+      "groupId": "frutas",
+      "minimo": 2,
+      "texto": "Intentar consumir 2 frutas por día."
+    },
+    {
+      "id": "libres-espaciadas",
+      "tipo": "libres-espaciadas",
+      "texto": "Las comidas libres se reparten en la semana: evitar hacerlas todas el mismo día."
+    }
   ],
   "foodGroups": [
     {
@@ -760,5 +794,10 @@
         }
       ]
     }
-  ]
+  ],
+  "freeMeals": {
+    "perWeek": 4,
+    "totalPerWeek": 28,
+    "maxPerDay": 1
+  }
 }

@@ -24,6 +24,11 @@ create table if not exists public.profiles (
   -- Cualquiera es paciente de si mismo. Ser profesional es un permiso extra,
   -- no un rol excluyente: una nutricionista tambien puede seguir un plan.
   is_professional boolean not null default false,
+  -- Cuenta creada por la semilla de pruebas. Sus registros son datos de salud
+  -- con la misma forma que los reales y viven en la misma base: sin una marca
+  -- explicita, distinguirlos despues se hace por email o por fecha, que es
+  -- exactamente como se borra de mas.
+  es_prueba       boolean not null default false,
   created_at      timestamptz not null default now()
 );
 
