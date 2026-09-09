@@ -196,7 +196,7 @@ function Ahora({ plan, momento, eventos, ahora, onRegistrar, onRegistrarDesvio }
           {evento.checklist.map((i: Ingredient, n: number) => (
             <li key={n}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, padding: '4px 0' }}>
-                <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
+                <span style={{ flex: 1, minWidth: 0, overflowWrap: 'break-word' }}>
                   {cambios[n] ? cambios[n]!.label : i.item}
                   {cambios[n] && <span className="sello">cambiado</span>}
                 </span>
