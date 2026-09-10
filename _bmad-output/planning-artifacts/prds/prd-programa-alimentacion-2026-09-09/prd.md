@@ -165,6 +165,11 @@ por ella.
   bioimpedancia y circunferencias (cintura, cadera, brazo, muslo).
 - **FR-24** Ninguna es obligatoria. La pantalla muestra lo que haya y dice qué falta
   para poder mostrar más.
+  Hoy no hay balanza de bioimpedancia en el equipo: los pliegues los mide Silvestre y
+  las circunferencias se las toma la persona sola. Eso hace que la única fuente que un
+  paciente puede producir sin nadie más sean las circunferencias, y es la que tiene que
+  funcionar sin depender de un profesional. La bioimpedancia sigue aceptada por el
+  modelo para el día que haya equipo.
 - **FR-25** Nunca se compara una medición contra la anterior: se comparan promedios
   de períodos. Peso y bioimpedancia oscilan por hidratación, sal y hora del día.
 - **FR-26** Cuando no alcanza para hablar de tendencia, se dice cuántas mediciones
