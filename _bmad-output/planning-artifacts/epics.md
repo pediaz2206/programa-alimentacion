@@ -190,6 +190,13 @@ no existe está dicho en la pantalla, no escondido.
 olvidado: con un solo probador, una pantalla de sugerencias es trabajo que no rinde.
 Si aparece un segundo entrenador, se revisa.
 
+**Un agujero que esta épica vuelve alcanzable:** `has_care_access` no mira el rol, así
+que la política de fotos concede a cualquier profesional con vínculo activo y
+consentido. Existe hoy y no lo abre esta épica —lo vuelve alcanzable, porque hasta ahora
+no había forma de entrar como entrenador—. Se cierra en la 1.5 por la vía barata: una
+función chica al lado, no el corte completo de `has_care_access`, que sigue siendo de la
+épica 2.
+
 **El orden importa:** la 1.2 aísla a las cuentas de prueba y la 1.3 les da la puerta
 para entrar. En ese orden y no al revés: si la puerta se abre primero, existe una
 ventana con cuentas de prueba capaces de iniciar sesión y todavía capaces de vincularse
@@ -256,6 +263,13 @@ para que una demo no toque mis datos de salud.
 **When** la semilla crea sus vínculos
 **Then** los crea sin problema, porque las dos puntas están marcadas como prueba
 
+**Given** que ésta es la contención real de una cuenta de prueba
+**When** se documenta qué alcanza
+**Then** queda escrito que impide **vincularse** con cuentas reales, y que no impide que
+una cuenta de prueba escriba lo suyo —su plan, sus comidas, sus fotos—
+**And** para la demo eso está bien, porque lo suyo es de mentira; lo que no puede pasar
+es que toque lo de otro
+
 ### Story 1.3: Entrar con email y contraseña, solo donde está habilitado
 
 Como socio que va a probar la app,
@@ -274,6 +288,16 @@ mismas políticas de RLS que cualquier otra
 **When** abro la pantalla de bienvenida
 **Then** el formulario no está en la pantalla ni en el bundle
 **And** una búsqueda del texto del formulario en `dist/` no lo encuentra
+
+**Given** que la bandera saca el formulario pero no la capacidad
+**When** se documenta qué es y qué no
+**Then** queda escrito que **no es un control de seguridad**: el `grant_type=password`
+lo atiende la API de Supabase, y AD-6 dice que producción y vista previa comparten una
+sola base, así que esas credenciales sirven contra producción aunque ahí no haya
+formulario
+**And** la bandera es ergonomía —que nadie vea en producción una puerta que no le
+corresponde—, y lo que de verdad contiene a una cuenta de prueba es la historia 1.2
+**And** queda dicho acá para que nadie afloje la 1.2 creyendo que la bandera la cubre
 
 **Given** que envío credenciales incorrectas
 **When** el servidor responde
@@ -347,10 +371,44 @@ esconderlas en el cliente dejaría los datos a un `curl` de distancia
 **And** la vista devuelve filas, no agregados, para que el cálculo siga viviendo en
 `packages/core` y la pantalla no se separe de la notificación (NFR-4)
 
+**Given** que `Detalle` en `Pacientes.tsx` hoy renderiza `EditarPlan`, `CopiarPlan` y
+`SubirPlan` sin mirar el rol
+**When** entra un entrenador
+**Then** esos tres controles no están: FR-10 dice que solo la nutricionista publica
+**And** la política `plans_professional_write` sigue usando `has_care_access` y esta
+historia **no la toca**: en el servidor un entrenador todavía podría insertar una
+versión por API. Deuda conocida, la cierra `puede_prescribir()` en la épica 2
+**And** se acepta para la épica 1 porque publicar es una escritura con autor y fecha
+—queda registrada y se revierte—, no una lectura silenciosa de datos ajenos
+
+**Given** que el componente `Consulta` ordena los puntos de atención por desvío, con
+reglas incumplidas y fechas concretas
+**When** entra un entrenador
+**Then** ese componente no se renderiza: es el detalle plato por plato que FR-21 le niega
+**And** no alcanza con sacarle columnas a la consulta si el resumen las reconstruye
+
+**Given** que `meal_photos_professional_read` concede con `has_care_access`, que mira
+vínculo activo, no revocado y consentido, pero **no mira el rol**
+**When** un entrenador con vínculo activo y consentido le pide una foto al storage
+**Then** la política se lo niega, porque pasa a exigir que el vínculo declare
+`rol = 'nutricionista'`
+**And** se implementa con una función nueva y chica al lado de `has_care_access` —misma
+forma más la condición de rol—, sin partir `has_care_access`, que es trabajo de la
+épica 2
+**And** los vínculos existentes tienen `rol` nulo hasta que la épica 2 los migre, y nulo
+niega: el default seguro es no ver la foto
+**And** una persona con los dos roles sobre el mismo paciente ve las fotos por su vínculo
+de nutricionista, porque la condición es del vínculo y no de la persona
+
 **Given** un vínculo pendiente, revocado o sin consentir
 **When** intento abrir esa ficha
 **Then** no aparece en mi lista, y pedirla directo por su id no devuelve datos
 **And** hay una aserción por cada uno de los tres casos en `supabase/test`
+
+**Given** el entrenador y las fotos
+**When** corro `supabase/test/correr.sh`
+**Then** hay una aserción que pide una foto como entrenador y espera que se la nieguen
+**And** otra que la pide como nutricionista del mismo paciente y espera que se la den
 
 **Given** una persona con los dos roles sobre el mismo paciente
 **When** abre la ficha
