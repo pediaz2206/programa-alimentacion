@@ -177,145 +177,86 @@ Las otras dos correcciones de la mesa:
 
 ### Épica 1: Silvestre entra como entrenador y ve algo que es cierto
 
-La tajada vertical. Una cuenta de prueba inicia sesión sin Google con una sesión real,
-el sistema la reconoce como entrenador vinculado a un paciente sembrado, y el entrenador
-abre una ficha que muestra adherencia, constancia de registro y proteína contra
-objetivo —los tres indicadores que `packages/core` ya calcula—. Cada bloque que todavía
-no existe aparece rotulado como pendiente, no oculto.
-
-Es lo más chico que produce feedback real de un entrenador, y no depende de ninguna otra
-épica.
-
-**FR cubiertos:** FR-28, FR-29, FR-30, FR-31 · parcial de FR-1, FR-6, FR-19, FR-21
-**Deja afuera, a propósito:** composición corporal, propuestas de cambio, matrícula,
-verificación, y la vista de la nutricionista. Todo eso está rotulado en pantalla.
-**Notas:** AD-4 manda: el formulario de email y contraseña se compila solo con
-`VITE_LOGIN_PRUEBA`, encendido únicamente en vista previa. La semilla ya existe; hay que
-sumarle contraseñas al azar mostradas una sola vez. El rol se resuelve con lo mínimo de
-`professional_roles` —una fila, sin matrícula ni verificación— para no adelantar la
-épica 2. UX-DR6: los cuatro estados por superficie valen desde esta pantalla.
-
-### Épica 2: El rol vive en la base y decide quién prescribe
-
-`professional_roles` reemplaza a `profiles.is_professional`, con las cuentas existentes
-migradas, y `has_care_access` se parte en ver y prescribir. A partir de acá el sistema
-sabe que solo la nutricionista publica una versión del plan y que ningún rol registra
-comidas por el paciente.
-
-**FR cubiertos:** FR-1, FR-6, FR-10, FR-14, FR-15
-**Notas:** AD-1 y AD-5. Dos perfiles de riesgo distintos conviviendo acá, y la mesa
-pidió que se traten como tales: la migración de datos se hace y se verifica antes de que
-`puede_prescribir()` gobierne una sola escritura. Cada política nueva suma su aserción a
-`supabase/test`. UX-DR10: se entra siempre como paciente; lo profesional es una pestaña.
-
-### Épica 3: La matrícula, y que se note si está verificada
-
-Quien se declara profesional registra matrícula y jurisdicción, el equipo las verifica a
-mano, y el estado —sin verificar, verificada, rechazada— lo ve el paciente vinculado.
-
-**FR cubiertos:** FR-2, FR-3, FR-4, FR-5
-**Notas:** Es el requisito comercial que puso Pablo: quien entra a la plataforma como
-profesional tiene matrícula. Va después de la épica 2 porque necesita que el rol exista
-como fila, y antes de cualquier venta.
-
-### Épica 4: El paciente ve quién lo ve, y lo corta cuando quiere
-
-El consentimiento es por vínculo, no por persona. El paciente abre una pantalla y ve
-quién tiene acceso, con qué rol, desde cuándo y con qué estado de matrícula, y puede
-revocar cualquiera con efecto inmediato sobre todo lo compartido, fotos incluidas.
-
-**FR cubiertos:** FR-7, FR-8, FR-9
-**Notas:** NFR-1 y NFR-2 se verifican acá con pruebas de permisos: revocado significa
-revocado en la misma petición, y el bucket privado deja de responder. Es la pantalla que
-convierte la política en algo que el paciente puede ver.
-
-### Épica 5: Medir el cuerpo desde donde se pueda
-
-Circunferencias que el paciente se toma solo, pliegues que le mide Silvestre, y
-bioimpedancia si alguna vez hay equipo: se registra lo que haya, se guarda de dónde salió
-y quién lo cargó, y la tendencia se lee por promedios contra promedios, nunca punto
-contra punto.
-
-**FR cubiertos:** FR-23, FR-24, FR-25, FR-26, FR-27, FR-32
-**Notas:** AD-3. Sin balanza en el equipo, la única fuente que un paciente solo puede
-producir son las circunferencias: esa es la que tiene pantalla de carga propia. Los
-pliegues los carga el profesional. La bioimpedancia queda en la lista blanca de
-`packages/core` sin formulario dedicado. Incluye migrar `body_measurements`.
-
-### Épica 6: Cada profesional ve su pregunta contestada
-
-La nutricionista abre una ficha y sabe si la persona está asimilando el plan. El
-entrenador abre la misma ficha y sabe si el trabajo está produciendo un cambio. Acá se
-completa la vista que la épica 1 dejó rotulada como pendiente.
-
-**FR cubiertos:** FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22
-**Notas:** Las dos vistas comparten la pantalla de ficha, así que van juntas para no
-tocar los mismos archivos dos veces. El cruce adherencia × cambio (FR-20) es cálculo de
-`packages/core`, no de pantalla. UX-DR4: cada indicador es un punto de atención con
-titular, dato que lo respalda y fechas concretas. Los rótulos de "pendiente" de la
-épica 1 se caen a medida que esta épica los reemplaza.
-
-### Épica 7: El entrenador propone, la nutricionista firma
-
-Un entrenador deja una propuesta de cambio de plan con su motivo; la nutricionista la
-aprueba y sale una versión nueva firmada por ella, o la descarta con una respuesta. El
-paciente nunca ve una propuesta que no rige.
-
-**FR cubiertos:** FR-11, FR-12, FR-13, FR-33
-**Notas:** AD-2 (la transición va en `aprobar_propuesta()`, en una transacción) y AD-6
-(quién lee una propuesta). Necesita la épica 2 —`puede_prescribir()`— y la 6 —el
-entrenador propone desde la ficha que ya lee—.
-
-### Épica 8: Que deje de sentirse rebuscada
-
-Las sugerencias se eligen tocándolas, los reemplazos frecuentes se recuerdan, se
-reconoce la constancia sin puntuar la comida, y las pantallas dicen una cosa cada una.
-
-**FR cubiertos:** FR-34, FR-35, FR-36
-**Notas:** Sale del descubrimiento de UX. Incluye UX-DR7 (densidad, la molestia número
-uno declarada) y UX-DR9 (piso de accesibilidad). Es la única épica que mejora lo que ya
-existe en vez de agregar algo nuevo, y la única que se puede adelantar en cualquier
-momento: no depende de ninguna otra.
-
----
-
-## Épica 1: Silvestre entra como entrenador y ve algo que es cierto
-
 Una cuenta de prueba inicia sesión sin Google con una sesión real, el sistema la
 reconoce como entrenador vinculado a un paciente sembrado, y el entrenador abre una
 ficha con adherencia, constancia de registro y proteína contra objetivo. Lo que todavía
-no existe está rotulado en la pantalla, no escondido.
+no existe está dicho en la pantalla, no escondido.
 
 **FR:** FR-28, FR-29, FR-30, FR-31 · parcial de FR-1, FR-6, FR-19, FR-21
 **Arquitectura:** AD-4 (la bandera de compilación), y lo mínimo de AD-1
 **UX:** UX-DR6 (cuatro estados por superficie), UX-DR10 (se entra siempre como paciente)
 
+**Cómo vuelve el feedback:** por WhatsApp, y lo anota Pablo a mano. Decidido, no
+olvidado: con un solo probador, una pantalla de sugerencias es trabajo que no rinde.
+Si aparece un segundo entrenador, se revisa.
+
+**El orden importa:** la 1.2 aísla a las cuentas de prueba y la 1.3 les da la puerta
+para entrar. En ese orden y no al revés: si la puerta se abre primero, existe una
+ventana con cuentas de prueba capaces de iniciar sesión y todavía capaces de vincularse
+con cuentas reales.
+
 ### Story 1.1: Las cuentas sembradas tienen contraseña
 
 Como quien prepara la demo,
-quiero que la semilla genere una contraseña al azar por cuenta y me la muestre una sola
+quiero que la semilla genere una contraseña al azar por cuenta y me la entregue una sola
 vez,
-para poder entregarle credenciales a mi socio sin que queden guardadas en ningún lado.
+para poder darle credenciales a mi socio sin que queden guardadas en ningún lado.
 
 **Acceptance Criteria:**
 
 **Given** que corro `sembrar.mjs` sin `--borrar`
 **When** el script crea cada cuenta de prueba
 **Then** le asigna una contraseña generada con `crypto.randomBytes`, distinta por cuenta
-**And** la imprime una sola vez en la salida, junto al email
 **And** no la escribe en ningún archivo del repositorio ni en la base fuera de `auth.users`
+
+**Given** que corro el script en una terminal interactiva
+**When** termina de sembrar
+**Then** imprime las credenciales una sola vez, junto al email
+
+**Given** que corro el script sin TTY —en CI, o con la salida redirigida a un archivo—
+**When** llega al momento de imprimir
+**Then** no imprime ninguna contraseña y aborta con un mensaje que explica por qué
+**And** si de verdad las necesito ahí, `--credenciales=RUTA` las escribe a un archivo
+fuera del repositorio, con permisos 600
+**And** el motivo es que el scrollback de una terminal y los logs de un job son dos
+lugares distintos, y el segundo lo lee cualquiera con acceso al repositorio
 
 **Given** que vuelvo a correr `sembrar.mjs` sobre cuentas que ya existen
 **When** el script las encuentra
 **Then** no cambia sus contraseñas y avisa que las anteriores siguen valiendo
 **And** para rotarlas hay que borrar y volver a sembrar
 
-**Given** que la salida del script queda en el historial de la terminal
-**When** termina de imprimir
-**Then** cierra con una línea que dice que esas credenciales solo sirven en vista previa
-**And** que las cuentas están marcadas con `profiles.es_prueba`
+### Story 1.2: Las cuentas de prueba solo se vinculan entre ellas
 
-### Story 1.2: Entrar con email y contraseña, solo donde está habilitado
+Como paciente real de la app,
+quiero que una cuenta de prueba nunca pueda vincularse conmigo,
+para que una demo no toque mis datos de salud.
+
+**Acceptance Criteria:**
+
+**Given** una cuenta con `profiles.es_prueba = true`
+**When** intenta crear un vínculo de cuidado con una cuenta que no es de prueba
+**Then** la política lo rechaza, y no por el cliente sino por RLS
+
+**Given** una cuenta real
+**When** intenta invitar a una cuenta de prueba
+**Then** la política lo rechaza igual, en la dirección contraria
+
+**Given** que la política necesita leer `profiles.es_prueba` de la otra punta, y
+`profiles` tiene RLS
+**When** se implementa
+**Then** la comprobación vive en una función de lectura, del mismo tipo que
+`has_care_access`, y no en un `exists` suelto que la RLS de `profiles` va a bloquear
+
+**Given** las dos direcciones
+**When** corro `supabase/test/correr.sh`
+**Then** hay una aserción para cada una, y fallan si alguien afloja la política
+
+**Given** las cuentas sembradas entre sí
+**When** la semilla crea sus vínculos
+**Then** los crea sin problema, porque las dos puntas están marcadas como prueba
+
+### Story 1.3: Entrar con email y contraseña, solo donde está habilitado
 
 Como socio que va a probar la app,
 quiero entrar con un email y una contraseña que me pasaron,
@@ -338,34 +279,13 @@ mismas políticas de RLS que cualquier otra
 **When** el servidor responde
 **Then** veo un mensaje que no distingue entre email inexistente y contraseña equivocada
 **And** el formulario conserva el email escrito
+**And** el motivo es el mismo por el que se invita por email sin resolverlo a un id: un
+mensaje que confirma qué emails existen convierte la pantalla en un enumerador de
+usuarios
 
 **Given** que estoy con la sesión de prueba iniciada
 **When** toco salir
 **Then** la sesión se cierra igual que la de Google y vuelvo a la bienvenida
-
-### Story 1.3: Las cuentas de prueba solo se vinculan entre ellas
-
-Como paciente real de la app,
-quiero que una cuenta de prueba nunca pueda vincularse conmigo,
-para que una demo no toque mis datos de salud.
-
-**Acceptance Criteria:**
-
-**Given** una cuenta con `profiles.es_prueba = true`
-**When** intenta crear un vínculo de cuidado con una cuenta que no es de prueba
-**Then** la política lo rechaza, y no por el cliente sino por RLS
-
-**Given** una cuenta real
-**When** intenta invitar a una cuenta de prueba
-**Then** la política lo rechaza igual, en la dirección contraria
-
-**Given** las dos direcciones anteriores
-**When** corro `supabase/test/correr.sh`
-**Then** hay una aserción para cada una, y fallan si alguien afloja la política
-
-**Given** las cuentas sembradas entre sí
-**When** la semilla crea sus vínculos
-**Then** los crea sin problema, porque las dos puntas están marcadas como prueba
 
 ### Story 1.4: El rol de entrenador existe como fila, y abre la pestaña
 
@@ -384,7 +304,7 @@ para ver la pestaña de seguimiento con la vista que me corresponde.
 **Given** que `care_relationships` gana la columna `rol`, con el mismo `check`
 **When** la semilla crea sus vínculos
 **Then** cada uno declara con qué rol se creó, que es lo que `personajes.mjs` ya
-describe y hoy se pierde
+describe y hoy se pierde al sembrar
 
 **Given** una sesión de una persona con una fila de rol
 **When** abro la app
@@ -394,7 +314,12 @@ describe y hoy se pierde
 **Given** que `profiles.is_professional` sigue existiendo
 **When** esta historia termina
 **Then** la app lee el rol de `professional_roles` y ya no de esa columna
-**And** la columna queda, sin migración de datos todavía: eso es la épica 2
+**And** la columna queda y la política `care_rel_invite` la sigue exigiendo: **esta
+historia no la toca**. Consecuencia conocida y aceptada: un entrenador con fila de rol y
+sin esa marca no puede invitar pacientes. En la épica 1 no molesta porque los vínculos
+los crea la semilla, y unificar las dos fuentes es el trabajo de la épica 2
+**And** queda dicho acá para que quien implemente encuentre esa política y sepa que no
+es un descuido
 
 ### Story 1.5: La ficha del entrenador contesta si el trabajo rinde
 
@@ -410,17 +335,22 @@ para saber con qué me encuentro antes de la sesión.
 del plan
 **And** veo la constancia de registro de los últimos días
 **And** veo proteína promedio contra el objetivo en gramos
-**And** los tres salen de `packages/core`, sin cálculo nuevo en la pantalla
+**And** los tres los calcula `packages/core`, sin cálculo nuevo en la pantalla
 
-**Given** la misma ficha
-**When** la recorro entera
-**Then** no hay detalle plato por plato ni fotos de comidas: FR-21 dice que el entrenador
-no los ve, y acá se cumple por lo que el servidor devuelve, no por lo que la pantalla
-esconde
+**Given** que FR-21 dice que el entrenador no ve el detalle plato por plato
+**When** la ficha pide los datos
+**Then** los pide a una vista con `security_invoker = true` que proyecta solo las
+columnas que el entrenador puede ver —fecha, comida, porciones, proteína— y **no**
+`note` ni `photo_path`
+**And** la restricción es de columnas y no de filas porque RLS no restringe columnas:
+esconderlas en el cliente dejaría los datos a un `curl` de distancia
+**And** la vista devuelve filas, no agregados, para que el cálculo siga viviendo en
+`packages/core` y la pantalla no se separe de la notificación (NFR-4)
 
 **Given** un vínculo pendiente, revocado o sin consentir
 **When** intento abrir esa ficha
 **Then** no aparece en mi lista, y pedirla directo por su id no devuelve datos
+**And** hay una aserción por cada uno de los tres casos en `supabase/test`
 
 **Given** una persona con los dos roles sobre el mismo paciente
 **When** abre la ficha
@@ -436,15 +366,17 @@ para no confundir un hueco con un error y poder opinar sobre lo que hay.
 
 **Given** la ficha del entrenador
 **When** la abro
-**Then** los bloques que todavía no existen —composición corporal, propuestas de cambio,
-matrícula verificada— aparecen rotulados como pendientes, con una línea de qué van a
-mostrar
-**And** el rótulo se distingue de un estado vacío: "todavía no lo construimos" no es lo
-mismo que "no hay datos"
+**Then** lo que todavía no existe se dice **dentro** de lo que sí hay —una línea al pie
+del bloque, "esto todavía no mira composición corporal"— y no como bloques vacíos con un
+cartel de pendiente
+**And** el motivo es que tres bloques anunciando ausencias hacen leer una lista de
+faltantes en vez de un producto
 
 **Given** un paciente sin mediciones cargadas
 **When** abro su ficha
 **Then** el bloque dice qué falta y cómo empezar, no muestra un cero
+**And** eso se ve distinto de una función que no construimos: no hay datos y no existe
+todavía no son lo mismo
 
 **Given** que el servidor no responde
 **When** ya tenía la ficha en pantalla
