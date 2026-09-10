@@ -276,3 +276,184 @@ reconoce la constancia sin puntuar la comida, y las pantallas dicen una cosa cad
 uno declarada) y UX-DR9 (piso de accesibilidad). Es la única épica que mejora lo que ya
 existe en vez de agregar algo nuevo, y la única que se puede adelantar en cualquier
 momento: no depende de ninguna otra.
+
+---
+
+## Épica 1: Silvestre entra como entrenador y ve algo que es cierto
+
+Una cuenta de prueba inicia sesión sin Google con una sesión real, el sistema la
+reconoce como entrenador vinculado a un paciente sembrado, y el entrenador abre una
+ficha con adherencia, constancia de registro y proteína contra objetivo. Lo que todavía
+no existe está rotulado en la pantalla, no escondido.
+
+**FR:** FR-28, FR-29, FR-30, FR-31 · parcial de FR-1, FR-6, FR-19, FR-21
+**Arquitectura:** AD-4 (la bandera de compilación), y lo mínimo de AD-1
+**UX:** UX-DR6 (cuatro estados por superficie), UX-DR10 (se entra siempre como paciente)
+
+### Story 1.1: Las cuentas sembradas tienen contraseña
+
+Como quien prepara la demo,
+quiero que la semilla genere una contraseña al azar por cuenta y me la muestre una sola
+vez,
+para poder entregarle credenciales a mi socio sin que queden guardadas en ningún lado.
+
+**Acceptance Criteria:**
+
+**Given** que corro `sembrar.mjs` sin `--borrar`
+**When** el script crea cada cuenta de prueba
+**Then** le asigna una contraseña generada con `crypto.randomBytes`, distinta por cuenta
+**And** la imprime una sola vez en la salida, junto al email
+**And** no la escribe en ningún archivo del repositorio ni en la base fuera de `auth.users`
+
+**Given** que vuelvo a correr `sembrar.mjs` sobre cuentas que ya existen
+**When** el script las encuentra
+**Then** no cambia sus contraseñas y avisa que las anteriores siguen valiendo
+**And** para rotarlas hay que borrar y volver a sembrar
+
+**Given** que la salida del script queda en el historial de la terminal
+**When** termina de imprimir
+**Then** cierra con una línea que dice que esas credenciales solo sirven en vista previa
+**And** que las cuentas están marcadas con `profiles.es_prueba`
+
+### Story 1.2: Entrar con email y contraseña, solo donde está habilitado
+
+Como socio que va a probar la app,
+quiero entrar con un email y una contraseña que me pasaron,
+para poder recorrerla sin que me den de alta una cuenta de Google.
+
+**Acceptance Criteria:**
+
+**Given** un despliegue compilado con `VITE_LOGIN_PRUEBA` encendida
+**When** abro la pantalla de bienvenida
+**Then** además del botón de Google veo un formulario de email y contraseña
+**And** al enviarlo con credenciales válidas obtengo una sesión real de Supabase, con las
+mismas políticas de RLS que cualquier otra
+
+**Given** un despliegue sin la bandera —producción—
+**When** abro la pantalla de bienvenida
+**Then** el formulario no está en la pantalla ni en el bundle
+**And** una búsqueda del texto del formulario en `dist/` no lo encuentra
+
+**Given** que envío credenciales incorrectas
+**When** el servidor responde
+**Then** veo un mensaje que no distingue entre email inexistente y contraseña equivocada
+**And** el formulario conserva el email escrito
+
+**Given** que estoy con la sesión de prueba iniciada
+**When** toco salir
+**Then** la sesión se cierra igual que la de Google y vuelvo a la bienvenida
+
+### Story 1.3: Las cuentas de prueba solo se vinculan entre ellas
+
+Como paciente real de la app,
+quiero que una cuenta de prueba nunca pueda vincularse conmigo,
+para que una demo no toque mis datos de salud.
+
+**Acceptance Criteria:**
+
+**Given** una cuenta con `profiles.es_prueba = true`
+**When** intenta crear un vínculo de cuidado con una cuenta que no es de prueba
+**Then** la política lo rechaza, y no por el cliente sino por RLS
+
+**Given** una cuenta real
+**When** intenta invitar a una cuenta de prueba
+**Then** la política lo rechaza igual, en la dirección contraria
+
+**Given** las dos direcciones anteriores
+**When** corro `supabase/test/correr.sh`
+**Then** hay una aserción para cada una, y fallan si alguien afloja la política
+
+**Given** las cuentas sembradas entre sí
+**When** la semilla crea sus vínculos
+**Then** los crea sin problema, porque las dos puntas están marcadas como prueba
+
+### Story 1.4: El rol de entrenador existe como fila, y abre la pestaña
+
+Como entrenador,
+quiero que la app sepa que soy entrenador y no nutricionista,
+para ver la pestaña de seguimiento con la vista que me corresponde.
+
+**Acceptance Criteria:**
+
+**Given** la tabla nueva `professional_roles (person_id, rol)`, con `rol` en
+`('nutricionista', 'entrenador')` y única por persona y rol
+**When** se crea con su migración
+**Then** nace con RLS activa y su política en el mismo archivo
+**And** no trae columnas de matrícula ni de verificación: eso es la épica 3
+
+**Given** que `care_relationships` gana la columna `rol`, con el mismo `check`
+**When** la semilla crea sus vínculos
+**Then** cada uno declara con qué rol se creó, que es lo que `personajes.mjs` ya
+describe y hoy se pierde
+
+**Given** una sesión de una persona con una fila de rol
+**When** abro la app
+**Then** entro como paciente, y la pestaña de seguimiento aparece además de las demás
+**And** si no tengo ninguna fila de rol, la pestaña no aparece
+
+**Given** que `profiles.is_professional` sigue existiendo
+**When** esta historia termina
+**Then** la app lee el rol de `professional_roles` y ya no de esa columna
+**And** la columna queda, sin migración de datos todavía: eso es la épica 2
+
+### Story 1.5: La ficha del entrenador contesta si el trabajo rinde
+
+Como entrenador,
+quiero abrir la ficha de un paciente y ver si viene cumpliendo,
+para saber con qué me encuentro antes de la sesión.
+
+**Acceptance Criteria:**
+
+**Given** que soy entrenador con un vínculo activo y consentido
+**When** abro la ficha de ese paciente
+**Then** veo adherencia sobre las comidas que esa persona tiene habilitadas, no sobre las
+del plan
+**And** veo la constancia de registro de los últimos días
+**And** veo proteína promedio contra el objetivo en gramos
+**And** los tres salen de `packages/core`, sin cálculo nuevo en la pantalla
+
+**Given** la misma ficha
+**When** la recorro entera
+**Then** no hay detalle plato por plato ni fotos de comidas: FR-21 dice que el entrenador
+no los ve, y acá se cumple por lo que el servidor devuelve, no por lo que la pantalla
+esconde
+
+**Given** un vínculo pendiente, revocado o sin consentir
+**When** intento abrir esa ficha
+**Then** no aparece en mi lista, y pedirla directo por su id no devuelve datos
+
+**Given** una persona con los dos roles sobre el mismo paciente
+**When** abre la ficha
+**Then** ve la vista de nutricionista, que es la que incluye más
+
+### Story 1.6: La pantalla dice qué es real y qué falta
+
+Como socio que está evaluando el producto,
+quiero que la app me diga qué está terminado y qué no,
+para no confundir un hueco con un error y poder opinar sobre lo que hay.
+
+**Acceptance Criteria:**
+
+**Given** la ficha del entrenador
+**When** la abro
+**Then** los bloques que todavía no existen —composición corporal, propuestas de cambio,
+matrícula verificada— aparecen rotulados como pendientes, con una línea de qué van a
+mostrar
+**And** el rótulo se distingue de un estado vacío: "todavía no lo construimos" no es lo
+mismo que "no hay datos"
+
+**Given** un paciente sin mediciones cargadas
+**When** abro su ficha
+**Then** el bloque dice qué falta y cómo empezar, no muestra un cero
+
+**Given** que el servidor no responde
+**When** ya tenía la ficha en pantalla
+**Then** sigo viendo lo que había, con un aviso, y no una pantalla vacía
+
+**Given** que la app está cargando y no hay copia local
+**When** espero
+**Then** veo un estado de carga; si hay copia local, no lo veo y se pinta lo que había
+
+**Given** cualquiera de los cuatro estados
+**When** los reviso
+**Then** ninguno se apoya solo en el color para decir lo que dice
