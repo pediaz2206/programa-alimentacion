@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [1, 2]
+stepsCompleted: [1, 2, 3, 4]
 inputDocuments:
   - _bmad-output/planning-artifacts/prds/prd-programa-alimentacion-2026-09-09/prd.md
   - _bmad-output/planning-artifacts/architecture/architecture-programa-alimentacion-2026-09-09/ARCHITECTURE-SPINE.md
@@ -201,6 +201,149 @@ función chica al lado, no el corte completo de `has_care_access`, que sigue sie
 para entrar. En ese orden y no al revés: si la puerta se abre primero, existe una
 ventana con cuentas de prueba capaces de iniciar sesión y todavía capaces de vincularse
 con cuentas reales.
+
+### Épica 2: El rol vive en la base y decide quién prescribe
+
+`professional_roles` reemplaza a `profiles.is_professional`, con las cuentas existentes
+migradas, y `has_care_access` se parte en ver y prescribir. A partir de acá el sistema
+sabe que solo la nutricionista publica una versión del plan y que ningún rol registra
+comidas por el paciente.
+
+**FR cubiertos:** FR-1, FR-6, FR-10, FR-14, FR-15
+**Notas:** AD-1 y AD-5. Dos perfiles de riesgo distintos conviviendo acá, y la mesa
+pidió que se traten como tales: la migración de datos se hace y se verifica antes de que
+`puede_prescribir()` gobierne una sola escritura. Cada política nueva suma su aserción a
+`supabase/test`. UX-DR10: se entra siempre como paciente; lo profesional es una pestaña.
+
+### Épica 3: La matrícula, y que se note si está verificada
+
+Quien se declara profesional registra matrícula y jurisdicción, el equipo las verifica a
+mano, y el estado —sin verificar, verificada, rechazada— lo ve el paciente vinculado.
+
+**FR cubiertos:** FR-2, FR-3, FR-4, FR-5
+**Notas:** Es el requisito comercial que puso Pablo: quien entra a la plataforma como
+profesional tiene matrícula. Va después de la épica 2 porque necesita que el rol exista
+como fila, y antes de cualquier venta.
+
+### Épica 4: El paciente ve quién lo ve, y lo corta cuando quiere
+
+El consentimiento es por vínculo, no por persona. El paciente abre una pantalla y ve
+quién tiene acceso, con qué rol, desde cuándo y con qué estado de matrícula, y puede
+revocar cualquiera con efecto inmediato sobre todo lo compartido, fotos incluidas.
+
+**FR cubiertos:** FR-7, FR-8, FR-9
+**Notas:** NFR-1 y NFR-2 se verifican acá con pruebas de permisos: revocado significa
+revocado en la misma petición, y el bucket privado deja de responder. Es la pantalla que
+convierte la política en algo que el paciente puede ver.
+
+### Épica 5: Medir el cuerpo desde donde se pueda
+
+Circunferencias que el paciente se toma solo, pliegues que le mide Silvestre, y
+bioimpedancia si alguna vez hay equipo: se registra lo que haya, se guarda de dónde salió
+y quién lo cargó, y la tendencia se lee por promedios contra promedios, nunca punto
+contra punto.
+
+**FR cubiertos:** FR-23, FR-24, FR-25, FR-26, FR-27, FR-32
+**Notas:** AD-3. Sin balanza en el equipo, la única fuente que un paciente solo puede
+producir son las circunferencias: esa es la que tiene pantalla de carga propia. Los
+pliegues los carga el profesional. La bioimpedancia queda en la lista blanca de
+`packages/core` sin formulario dedicado. Incluye migrar `body_measurements`.
+
+### Épica 6: Cada profesional ve su pregunta contestada
+
+La nutricionista abre una ficha y sabe si la persona está asimilando el plan. El
+entrenador abre la misma ficha y sabe si el trabajo está produciendo un cambio. Acá se
+completa la vista que la épica 1 dejó rotulada como pendiente.
+
+**FR cubiertos:** FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22
+**Notas:** Las dos vistas comparten la pantalla de ficha, así que van juntas para no
+tocar los mismos archivos dos veces. El cruce adherencia × cambio (FR-20) es cálculo de
+`packages/core`, no de pantalla. UX-DR4: cada indicador es un punto de atención con
+titular, dato que lo respalda y fechas concretas. Los rótulos de "pendiente" de la
+épica 1 se caen a medida que esta épica los reemplaza.
+
+### Épica 7: El entrenador propone, la nutricionista firma
+
+Un entrenador deja una propuesta de cambio de plan con su motivo; la nutricionista la
+aprueba y sale una versión nueva firmada por ella, o la descarta con una respuesta. El
+paciente nunca ve una propuesta que no rige.
+
+**FR cubiertos:** FR-11, FR-12, FR-13, FR-33
+**Notas:** AD-2 (la transición va en `aprobar_propuesta()`, en una transacción) y AD-6
+(quién lee una propuesta). Necesita la épica 2 —`puede_prescribir()`— y la 6 —el
+entrenador propone desde la ficha que ya lee—.
+
+### Épica 8: Que deje de sentirse rebuscada
+
+Las sugerencias se eligen tocándolas, los reemplazos frecuentes se recuerdan, se
+reconoce la constancia sin puntuar la comida, y las pantallas dicen una cosa cada una.
+
+**FR cubiertos:** FR-34, FR-35, FR-36
+**Notas:** Sale del descubrimiento de UX. Incluye UX-DR7 (densidad, la molestia número
+uno declarada) y UX-DR9 (piso de accesibilidad). Es la única épica que mejora lo que ya
+existe en vez de agregar algo nuevo, y la única que se puede adelantar en cualquier
+momento: no depende de ninguna otra.
+
+---
+
+## Validación de la épica 1
+
+Hecha al cerrar el paso 4, con las seis historias ya implementadas. Lo que
+sigue es lo que **no** cerró limpio, porque lo que cerró limpio no hace falta
+anotarlo.
+
+### Archivos que varias épicas van a tocar
+
+La estructura vertical tiene un costo y conviene tenerlo escrito en vez de
+descubrirlo: tres archivos los tocan varias épicas.
+
+| Archivo | Épicas | Por qué se acepta |
+|---|---|---|
+| `apps/web/src/pantallas/Pacientes.tsx` | 1, 6, 7 | La 1 deja la ficha rotulada, la 6 la completa, la 7 le suma el botón de propuesta. Entre una y otra hay feedback real de un entrenador, que es lo que la partición compra. |
+| `supabase/schema.sql` (políticas) | 1, 2, 4 | Los tres cambios tienen perfiles de riesgo distintos —proyección de columnas, partir `has_care_access`, revocación— y cada uno suma sus aserciones. Juntarlos sería un solo cambio grande sin verificación intermedia. |
+| `professional_roles` | 1, 3 | La 1 la crea con lo mínimo, la 3 le suma matrícula y verificación. Una tabla que nace con columnas que nadie usa todavía es la alternativa. |
+
+Se consideró consolidar y se descartó: la 1 existe para producir feedback
+antes de construir el resto, y sin ese corte no hay feedback hasta la 6.
+
+### Lo que la épica 2 tiene que deshacer
+
+La 1 dejó cosas a medias **a propósito**, y si no quedan anotadas se van a leer
+como bugs:
+
+- `declararseProfesional` escribe en `professional_roles` **y** en
+  `profiles.is_professional`. La segunda escritura existe solo porque
+  `care_rel_invite` todavía exige esa columna. La épica 2 saca las dos.
+- `plans_professional_write` usa `has_care_access`, que no mira el rol: en el
+  servidor un entrenador todavía podría insertar una versión del plan. En la
+  pantalla no tiene por dónde, pero por API sí. Lo cierra `puede_prescribir()`.
+- `ve_fotos()` es una función chica al lado de `has_care_access`, no el corte
+  completo. Cuando la 2 parta la función madre, las dos tienen que quedar
+  coherentes o van a decir cosas distintas sobre el mismo vínculo.
+
+### Cobertura
+
+36 de 36 FR con épica asignada. Cuatro aparecen dos veces —FR-1, FR-6, FR-19
+y FR-21— y es deliberado: la épica 1 entrega la parte mostrable y dice en el
+texto qué deja afuera. El mapa de cobertura y la lista de épicas coinciden FR
+por FR.
+
+Dentro de la épica 1 ninguna historia depende de una posterior. La 1.5 necesita
+la 1.4 y la 1.6 necesita la 1.5, las dos hacia atrás.
+
+### Una corrección de este mismo paso
+
+Al validar apareció que las épicas 2 a 8 **habían desaparecido del documento**:
+una edición anterior cortó el archivo buscando `## Épica 1:`, que también
+matchea dentro de `### Épica 1:` del listado, y se llevó puesto todo lo que
+venía después. Se restauraron desde `5d22aa4`. El contenido estaba intacto en
+git; lo que faltó fue mirar el documento entero después de reescribirlo.
+
+---
+
+## Épica 1: Silvestre entra como entrenador y ve algo que es cierto
+
+Las seis historias de la tajada vertical.
 
 ### Story 1.1: Las cuentas sembradas tienen contraseña
 
