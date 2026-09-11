@@ -206,7 +206,12 @@ select pruebas.check('una profesional no ve el perfil de otra',
 -- 11. Aislamiento de las cuentas de prueba: solo se vinculan entre ellas.
 --     Van dos cuentas nuevas, una profesional de prueba y una paciente de
 --     prueba, para poder cruzar las cuatro combinaciones.
+--
+--     Sin sesion: la marca `es_prueba` solo la pone la semilla, que corre con
+--     service_role. Insertarlas actuando como alguien logueado seria simular
+--     algo que no puede pasar.
 set role postgres;
+select set_config('test.uid', '', false);
 insert into auth.users (id, email) values
   ('44444444-4444-4444-4444-444444444444', 'nutri@prueba.en-punto.local'),
   ('55555555-5555-5555-5555-555555555555', 'pac@prueba.en-punto.local');
@@ -503,3 +508,34 @@ select pruebas.check('la profesional si puede cortar el vinculo',
   pruebas.intentar($$update public.care_relationships
     set status = 'revoked', revoked_at = now()
     where professional_id = '22222222-2222-2222-2222-222222222222'$$), true);
+
+-- 15. La marca de cuenta de prueba no la escribe su dueño.
+--
+--     Es de lo que cuelga todo el aislamiento del bloque 11: si la cuenta
+--     contenida puede apagarse la marca, las tres guardas de ahi arriba se
+--     abren de una vez y ninguna de ellas lo nota.
+set role authenticated;
+select set_config('test.uid', '44444444-4444-4444-4444-444444444444', false);
+select pruebas.check('arranca marcada como prueba (control)',
+  public.es_cuenta_de_prueba('44444444-4444-4444-4444-444444444444'), true);
+
+select pruebas.check('la cuenta de prueba NO se apaga la marca',
+  pruebas.intentar($$update public.profiles set es_prueba = false
+    where id = '44444444-4444-4444-4444-444444444444'$$), false);
+select pruebas.check('y sigue marcada',
+  public.es_cuenta_de_prueba('44444444-4444-4444-4444-444444444444'), true);
+
+select pruebas.check('y por lo tanto sigue sin poder invitar a una cuenta real',
+  pruebas.puede_invitar('44444444-4444-4444-4444-444444444444', 'ajeno@ejemplo.com'), false);
+
+-- Lo que si puede: todo lo demas de su perfil.
+select pruebas.check('pero si cambia su propio nombre',
+  pruebas.intentar($$update public.profiles set display_name = 'Otro nombre'
+    where id = '44444444-4444-4444-4444-444444444444'$$), true);
+
+-- Y al reves: una cuenta real no se marca como de prueba para colarse entre
+-- las sembradas.
+select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
+select pruebas.check('una cuenta real no se marca como de prueba',
+  pruebas.intentar($$update public.profiles set es_prueba = true
+    where id = '11111111-1111-1111-1111-111111111111'$$), false);

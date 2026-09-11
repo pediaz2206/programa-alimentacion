@@ -43,7 +43,9 @@ que agrega la marca `profiles.es_prueba`;
 `007-roles-profesionales.sql`, que crea `professional_roles` y la columna
 `care_relationships.rol`. Y `008-quien-escribe-que.sql`, que fija qué
 columna de un vínculo puede tocar cada parte: sin ella, el profesional se
-concede el consentimiento solo y el entrenador se asciende a nutricionista.
+concede el consentimiento solo y el entrenador se asciende a nutricionista. Y
+`009-la-marca-de-prueba-no-se-toca.sql`, que impide que una cuenta sembrada se
+apague su propia marca `es_prueba` y salga del aislamiento.
 
 ## Entrar con esas cuentas
 

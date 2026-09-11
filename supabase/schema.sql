@@ -416,6 +416,41 @@ drop policy if exists profiles_own on public.profiles;
 create policy profiles_own on public.profiles
   for all using (id = auth.uid()) with check (id = auth.uid());
 
+-- `profiles.es_prueba` no la escribe su dueño.
+--
+-- Todo el aislamiento de las cuentas de prueba cuelga de esa marca, y
+-- `profiles_own` es `for all` sin restriccion de columnas: la propia cuenta se
+-- la apagaba con un PATCH y las tres guardas pasaban a permitir el cruce con
+-- cuentas reales. Va como trigger y no como `revoke update (es_prueba)`
+-- porque un privilegio de columna obliga a revocar el de tabla y mantener a
+-- mano la lista de columnas concedidas.
+
+create or replace function public.es_prueba_solo_la_semilla()
+returns trigger
+language plpgsql
+as $$
+begin
+  -- Sin sesion es la semilla, con service_role. Es la unica que la escribe.
+  if auth.uid() is null then return new; end if;
+
+  if tg_op = 'INSERT' then
+    if new.es_prueba then
+      raise exception 'La marca de cuenta de prueba la pone la semilla.' using errcode = '42501';
+    end if;
+    return new;
+  end if;
+
+  if new.es_prueba is distinct from old.es_prueba then
+    raise exception 'La marca de cuenta de prueba no se cambia desde la app.' using errcode = '42501';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists profiles_marca_de_prueba on public.profiles;
+create trigger profiles_marca_de_prueba
+  before insert or update on public.profiles
+  for each row execute function public.es_prueba_solo_la_semilla();
+
 -- La profesional necesita ver el nombre de sus pacientes, nada mas.
 drop policy if exists profiles_professional_read on public.profiles;
 create policy profiles_professional_read on public.profiles

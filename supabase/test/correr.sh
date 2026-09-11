@@ -27,11 +27,19 @@ run -q -f "$DIR/schema.sql" 2>&1 | grep -v 'does not exist, skipping' || true
 # despues del schema porque alcanzan a las tablas que este acaba de crear.
 run -q -c 'grant all on all tables in schema public, storage to authenticated;' >/dev/null
 run -q -c 'create schema pruebas; grant usage on schema pruebas to authenticated;' >/dev/null
-SALIDA=$(run -f "$DIR/permisos.sql" 2>&1 | grep -E 'ok  |FALLO|ERROR' | sed 's/^psql:[^ ]* //;s/NOTICE:  //')
-echo "$SALIDA"
+# `|| true` a proposito: psql sale distinto de cero cuando una asercion falla,
+# y con `set -e` eso abortaria el script ANTES de imprimir cual fallo. El
+# codigo de salida lo decide el conteo de FALLO/ERROR de mas abajo.
+SALIDA=$(run -f "$DIR/permisos.sql" 2>&1 || true)
+echo "$SALIDA" | grep -E 'ok  |FALLO|ERROR' | sed 's/^psql:[^ ]* //;s/NOTICE:  //' || true
+
 # El conteo lo imprime la corrida, no un numero escrito a mano en AGENTS.md:
 # una cifra que se mantiene sola es la que sirve para notar una asercion que
 # se perdio. Contar `select pruebas.check` a ojo no da lo mismo, porque hay
 # aserciones adentro de bloques plpgsql.
 echo "---"
-echo "$SALIDA" | grep -c '^ok  ' | xargs printf '%s aserciones pasaron\n'
+echo "$(echo "$SALIDA" | grep -c 'ok  ' || true) aserciones pasaron"
+if echo "$SALIDA" | grep -qE 'FALLO|^psql:.*ERROR'; then
+  echo "LA CORRIDA FALLO"
+  exit 1
+fi
