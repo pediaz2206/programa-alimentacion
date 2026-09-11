@@ -145,6 +145,44 @@ as $$
   select coalesce((select p.es_prueba from public.profiles p where p.id = persona), false);
 $$;
 
+/**
+ * Si quien llama puede ver las fotos de las comidas de esa persona.
+ *
+ * has_care_access mira vinculo activo, no revocado y consentido, pero NO mira
+ * el rol. La foto de un plato es lo mas detallado que hay: FR-21 dice que el
+ * entrenador no ve el detalle plato por plato, y sacarle la columna a una
+ * vista no sirve de nada si despues puede pedirle el archivo al storage.
+ *
+ * La condicion es del vinculo y no de la persona: alguien que es entrenador de
+ * uno y nutricionista de otro ve las fotos del segundo y no las del primero.
+ *
+ * Nulo niega. Los vinculos anteriores a la columna `rol` no ven fotos hasta
+ * que se les complete, que es la direccion correcta para equivocarse.
+ *
+ * No parte has_care_access: ese corte, en ver y prescribir, es de la epica 2.
+ */
+create or replace function public.ve_fotos(patient uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.care_relationships r
+    where r.patient_id = patient
+      and r.professional_id = auth.uid()
+      and r.status = 'active'
+      and r.revoked_at is null
+      and r.consent_granted_at is not null
+      and r.rol = 'nutricionista'
+  );
+$$;
+
+revoke all on function public.ve_fotos(uuid) from public;
+grant execute on function public.ve_fotos(uuid) to authenticated;
+
 revoke all on function public.es_cuenta_de_prueba(uuid) from public;
 grant execute on function public.es_cuenta_de_prueba(uuid) to authenticated;
 
@@ -569,6 +607,31 @@ select
 from public.meal_logs l
 group by l.patient_id, date_trunc('week', l.local_date);
 
+-- Lo que un profesional puede leer del registro sin ver el detalle plato por
+-- plato: fecha, comida, porciones y proteina. Sin `note` y sin `photo_path`.
+--
+-- Es una proyeccion de columnas y no de filas porque RLS no restringe
+-- columnas: se puede negar una fila entera, no un campo. Esconder esos dos en
+-- el cliente dejaria los datos a un `curl` de distancia.
+--
+-- Devuelve filas y no agregados a proposito: el calculo de adherencia,
+-- constancia y proteina vive en `packages/core`, que es lo que mantiene la
+-- pantalla y la notificacion diciendo lo mismo.
+--
+-- `security_invoker` hace que el RLS de meal_logs siga mandando sobre que
+-- filas salen; esta vista solo decide que columnas.
+create or replace view public.registro_sin_detalle
+with (security_invoker = true) as
+select
+  l.patient_id,
+  l.local_date,
+  l.slot_id,
+  l.option_id,
+  l.portions,
+  l.protein_grams,
+  l.is_free_meal
+from public.meal_logs l;
+
 -- ----------------------------------------------------------------- fotos --
 
 -- Bucket privado: las fotos se leen con URLs firmadas de corta duracion.
@@ -599,5 +662,5 @@ create policy meal_photos_professional_read on storage.objects
   using (
     bucket_id = 'meal-photos'
     and (storage.foldername(name))[1] ~ '^[0-9a-fA-F-]{36}$'
-    and public.has_care_access(((storage.foldername(name))[1])::uuid)
+    and public.ve_fotos(((storage.foldername(name))[1])::uuid)
   );

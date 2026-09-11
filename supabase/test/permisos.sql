@@ -69,6 +69,17 @@ select pruebas.check('ve el plan del paciente',
   exists (select 1 from public.plans where patient_id = '11111111-1111-1111-1111-111111111111'), true);
 select pruebas.check('ve el registro de comidas',
   exists (select 1 from public.meal_logs where patient_id = '11111111-1111-1111-1111-111111111111'), true);
+-- Las fotos ademas miran el rol del vinculo, y nulo niega: los vinculos de
+-- antes de que existiera la columna no ven fotos hasta que se les complete.
+select pruebas.check('un vinculo sin rol declarado no ve las fotos',
+  exists (select 1 from storage.objects where bucket_id = 'meal-photos'), false);
+
+set role postgres;
+update public.care_relationships set rol = 'nutricionista'
+where patient_id = '11111111-1111-1111-1111-111111111111'
+  and professional_id = '22222222-2222-2222-2222-222222222222';
+set role authenticated;
+
 select pruebas.check('ve la foto de la comida',
   exists (select 1 from storage.objects where bucket_id = 'meal-photos'), true);
 select pruebas.check('ve el peso y la cintura',
@@ -303,3 +314,57 @@ select pruebas.check('pero no le declara un rol a otro',
 select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
 select pruebas.check('sin rol declarado no hay ninguna fila que ver',
   exists (select 1 from public.professional_roles), false);
+
+-- 13. El entrenador ve el registro pero no el detalle. Vinculo activo,
+--     consentido y con rol 'entrenador': cumple las tres condiciones de
+--     has_care_access, que es justo por lo que hacia falta mirar el rol.
+set role postgres;
+insert into auth.users (id, email) values
+  ('66666666-6666-6666-6666-666666666666', 'entrena@ejemplo.com');
+insert into public.profiles (id, display_name, email, is_professional) values
+  ('66666666-6666-6666-6666-666666666666', 'Entrenador', 'entrena@ejemplo.com', true);
+insert into public.professional_roles (person_id, rol) values
+  ('66666666-6666-6666-6666-666666666666', 'entrenador');
+insert into public.care_relationships
+  (professional_id, patient_id, patient_email, status, rol, accepted_at, consent_granted_at, consent_version)
+values
+  ('66666666-6666-6666-6666-666666666666', '11111111-1111-1111-1111-111111111111',
+   'paciente@ejemplo.com', 'active', 'entrenador', now(), now(), 'v1');
+set role authenticated;
+
+select set_config('test.uid', '66666666-6666-6666-6666-666666666666', false);
+select pruebas.check('el entrenador tiene acceso de cuidado',
+  public.has_care_access('11111111-1111-1111-1111-111111111111'), true);
+select pruebas.check('y ve el registro por la vista sin detalle',
+  exists (select 1 from public.registro_sin_detalle
+          where patient_id = '11111111-1111-1111-1111-111111111111'), true);
+select pruebas.check('pero NO ve las fotos, aunque el vinculo este consentido',
+  exists (select 1 from storage.objects where bucket_id = 'meal-photos'), false);
+select pruebas.check('ve_fotos le dice que no',
+  public.ve_fotos('11111111-1111-1111-1111-111111111111'), false);
+
+-- La vista no tiene las columnas del detalle: no es que las filtre, no
+-- existen. Un `select note` contra ella es un error de columna inexistente.
+select pruebas.check('la vista sin detalle no expone la nota',
+  exists (select 1 from information_schema.columns
+          where table_name = 'registro_sin_detalle' and column_name = 'note'), false);
+select pruebas.check('ni la ruta de la foto',
+  exists (select 1 from information_schema.columns
+          where table_name = 'registro_sin_detalle' and column_name = 'photo_path'), false);
+
+-- Y sigue respetando el vinculo: sin acceso, la vista no devuelve nada. Una
+-- vista sin security_invoker filtraria todo el registro de todos.
+select set_config('test.uid', '33333333-3333-3333-3333-333333333333', false);
+select pruebas.check('un profesional ajeno no ve nada por la vista sin detalle',
+  exists (select 1 from public.registro_sin_detalle
+          where patient_id = '11111111-1111-1111-1111-111111111111'), false);
+
+-- Alguien con los dos roles sobre la misma persona ve las fotos: la condicion
+-- es del vinculo, y el de nutricionista la habilita.
+set role postgres;
+update public.care_relationships set rol = 'nutricionista'
+where professional_id = '66666666-6666-6666-6666-666666666666';
+set role authenticated;
+select set_config('test.uid', '66666666-6666-6666-6666-666666666666', false);
+select pruebas.check('con el vinculo de nutricionista, las mismas fotos si',
+  public.ve_fotos('11111111-1111-1111-1111-111111111111'), true);

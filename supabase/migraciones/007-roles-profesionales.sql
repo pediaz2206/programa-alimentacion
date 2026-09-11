@@ -64,5 +64,15 @@ begin
 exception when duplicate_object then null;
 end $$;
 
+-- Los vinculos que ya existen son todos de nutricionista: hasta ahora
+-- `is_professional` era el unico permiso y la casilla que lo enciende dice,
+-- literal, "Soy nutricionista". No hay un solo vinculo de entrenador anterior
+-- a esta migracion, asi que el relleno no adivina nada.
+--
+-- Sin el, esos vinculos quedan en nulo y pierden las fotos, que hoy si ven.
+-- El default sigue siendo nulo para los que se creen sin declarar rol, y nulo
+-- niega.
+update public.care_relationships set rol = 'nutricionista' where rol is null;
+
 comment on column public.care_relationships.rol is
   'Con que rol se creo el vinculo. La misma persona puede seguir a alguien como nutricionista y a otro como entrenador.';

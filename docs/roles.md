@@ -16,9 +16,19 @@ profesional del lado de quien opera la app.
 
 ### 1. El entrenador lee y sugiere, no publica
 
-Ve todo el seguimiento —adherencia, proteína, peso, cintura, registros, fotos,
-resumen de consulta— bajo las mismas condiciones que hoy: vínculo activo, no
-revocado y consentido.
+Ve el seguimiento bajo las mismas condiciones que hoy —vínculo activo, no
+revocado y consentido— pero **no todo**: adherencia, constancia de registro,
+proteína contra objetivo, peso y cintura.
+
+> **Corregido el 2026-09-11.** Este párrafo decía "todo el seguimiento […]
+> registros, fotos, resumen de consulta". El PRD lo acotó después: FR-21 le
+> niega al entrenador el detalle plato por plato. Sin fotos y sin el resumen de
+> consulta, que reconstruye el desvío con fechas concretas. La pregunta del
+> entrenador es si el trabajo está produciendo un cambio, y para eso no hace
+> falta saber qué comió el martes.
+>
+> Lo aplica el servidor: la vista `registro_sin_detalle` no tiene esas
+> columnas, y `ve_fotos()` exige que el vínculo declare `nutricionista`.
 
 Sobre el plan **puede dejar una propuesta**, no un cambio. La propuesta llega a
 la nutricionista, que la aprueba o la descarta. Si la aprueba, se publica una

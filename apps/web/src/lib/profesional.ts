@@ -13,8 +13,19 @@ import { fechaISO } from './registro.ts';
  * mas datos: ella no sigue el plan, lo supervisa.
  */
 
+export type RolDelVinculo = 'nutricionista' | 'entrenador';
+
 export interface Paciente {
   vinculoId: string;
+  /**
+   * Con que rol lo sigo. Decide que ficha se muestra y que datos se piden:
+   * el entrenador no ve el detalle plato por plato (FR-21).
+   *
+   * Si lo sigo con los dos roles, manda nutricionista, que es la que incluye
+   * mas. Un vinculo sin rol declarado cuenta como entrenador: es el default
+   * seguro, y despues de 007 no deberia quedar ninguno.
+   */
+  rol: RolDelVinculo;
   id: string;
   nombre: string;
   email: string;
@@ -41,22 +52,54 @@ export async function misPacientes(sesion: Session | null): Promise<Paciente[]> 
 
   const { data: vinculos, error } = await supabase
     .from('care_relationships')
-    .select('id, patient_id, patient_email, profiles!care_relationships_patient_id_fkey(display_name, email, avatar_url)')
+    .select('id, patient_id, patient_email, rol, profiles!care_relationships_patient_id_fkey(display_name, email, avatar_url)')
     .eq('professional_id', sesion.user.id)
     .eq('status', 'active')
+    // Sin consentimiento no se comparte nada, y eso incluye el email: la
+    // columna `patient_email` es de esta tabla y la ve el profesional, asi
+    // que sin este filtro RLS no lo tapa. Un vinculo aceptado pero no
+    // consentido mostraba nombre en blanco, email a la vista y todo vacio.
+    .not('consent_granted_at', 'is', null)
+    .is('revoked_at', null)
     .not('patient_id', 'is', null);
   if (error) throw error;
 
-  const ids = (vinculos ?? []).map((v) => v['patient_id'] as string);
+  // El rol es por vinculo: la misma persona puede seguir a alguien como
+  // nutricionista y a otro como entrenador. Si hay dos vinculos con la misma
+  // persona, manda nutricionista.
+  const rolPorPaciente = new Map<string, RolDelVinculo>();
+  for (const v of vinculos ?? []) {
+    const uid = v['patient_id'] as string;
+    if (v['rol'] === 'nutricionista' || rolPorPaciente.get(uid) === 'nutricionista') {
+      rolPorPaciente.set(uid, 'nutricionista');
+    } else {
+      rolPorPaciente.set(uid, 'entrenador');
+    }
+  }
+
+  const ids = [...rolPorPaciente.keys()];
   if (ids.length === 0) return [];
+  const comoNutri = ids.filter((id) => rolPorPaciente.get(id) === 'nutricionista');
+  const comoEntrenador = ids.filter((id) => rolPorPaciente.get(id) !== 'nutricionista');
 
   const desde = ultimosDias(fechaISO(), DIAS_VENTANA)[0]!;
   // Dos consultas para todos, no dos por paciente: una lista de veinte
   // pacientes no puede disparar cuarenta viajes al servidor.
-  const [{ data: logs }, { data: planes }, { data: configs }, { data: medidas }] = await Promise.all([
-    supabase.from('meal_logs')
-      .select('patient_id, local_date, slot_id, option_id, portions, protein_grams, is_free_meal, note, photo_path')
-      .in('patient_id', ids).gte('local_date', desde),
+  const [{ data: logs }, { data: logsSinDetalle }, { data: planes }, { data: configs }, { data: medidas }] = await Promise.all([
+    // Como nutricionista, el registro entero. Como entrenador, una vista que
+    // no tiene las columnas del detalle: no las filtra, no existen. La
+    // restriccion es de columnas y RLS solo sabe de filas, asi que esconderlas
+    // en el cliente las dejaria a un `curl` de distancia.
+    comoNutri.length
+      ? supabase.from('meal_logs')
+          .select('patient_id, local_date, slot_id, option_id, portions, protein_grams, is_free_meal, note, photo_path')
+          .in('patient_id', comoNutri).gte('local_date', desde)
+      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+    comoEntrenador.length
+      ? supabase.from('registro_sin_detalle')
+          .select('patient_id, local_date, slot_id, option_id, portions, protein_grams, is_free_meal')
+          .in('patient_id', comoEntrenador).gte('local_date', desde)
+      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
     supabase.from('plans')
       .select('patient_id, plan_versions(version, doc)')
       .in('patient_id', ids).eq('is_active', true),
@@ -77,7 +120,11 @@ export async function misPacientes(sesion: Session | null): Promise<Paciente[]> 
   for (const c of configs ?? []) configPorPaciente.set(c['patient_id'] as string, c['doc'] as UserConfig);
 
   const logsPorPaciente = new Map<string, ComidaDeConsulta[]>();
-  for (const l of logs ?? []) {
+  // El tipo de las dos listas no coincide, y esa es la idea: las filas de la
+  // vista no tienen `note` ni `photo_path`. Se unifica a un mapa suelto y las
+  // dos columnas quedan en null para el entrenador, que es lo que son.
+  const todos: Record<string, unknown>[] = [...(logs ?? []), ...(logsSinDetalle ?? [])];
+  for (const l of todos) {
     const uid = l['patient_id'] as string;
     const lista = logsPorPaciente.get(uid) ?? [];
     lista.push({
@@ -112,6 +159,7 @@ export async function misPacientes(sesion: Session | null): Promise<Paciente[]> 
     const email = v['patient_email'] as string;
     return {
       vinculoId: v['id'] as string,
+      rol: rolPorPaciente.get(id) ?? 'entrenador',
       id,
       nombre: nombreDe(v['profiles']) ?? email,
       email,
@@ -148,8 +196,15 @@ export function metricasDe(paciente: Paciente, dias = 7): Metricas | null {
   };
 }
 
-/** El resumen para leer antes de la consulta. Necesita plan y config. */
+/**
+ * El resumen para leer antes de la consulta. Necesita plan y config.
+ *
+ * Es de la nutricionista. Reconstruye el desvio plato por plato con fechas
+ * concretas, que es exactamente lo que FR-21 le niega al entrenador: no
+ * alcanza con sacarle columnas a la consulta si despues el resumen las arma.
+ */
 export function consultaDe(paciente: Paciente): ResumenConsulta | null {
+  if (paciente.rol !== 'nutricionista') return null;
   if (!paciente.plan || !paciente.config) return null;
   return resumenDeConsulta(
     paciente.plan, paciente.config, paciente.registros, paciente.medidas, fechaISO(),

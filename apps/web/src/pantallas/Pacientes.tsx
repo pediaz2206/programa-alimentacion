@@ -115,7 +115,7 @@ function Detalle({ paciente, pacientes, sesion, onVolver }: {
       </button>
 
       <Encabezado
-        eyebrow={paciente.email}
+        eyebrow={paciente.rol === 'nutricionista' ? paciente.email : 'Lo seguís como entrenador'}
         titulo={paciente.nombre}
         extra={<Avatar nombre={paciente.nombre} foto={paciente.foto} tamano={46} />}
       />
@@ -147,9 +147,22 @@ function Detalle({ paciente, pacientes, sesion, onVolver }: {
           )}
       </Seccion>
 
-      {paciente.plan && <EditarPlan paciente={paciente} sesion={sesion} />}
-      <CopiarPlan paciente={paciente} pacientes={pacientes} sesion={sesion} />
-      <SubirPlan paciente={paciente} sesion={sesion} />
+      {/* Publicar una version del plan es solo de la nutricionista (FR-10).
+          El entrenador propone y ella firma, y ese circuito es de la epica 7:
+          hasta entonces aca no hay nada suyo que tocar.
+
+          El servidor todavia no lo impide: `plans_professional_write` usa
+          `has_care_access`, que no mira el rol. Es deuda conocida y la cierra
+          `puede_prescribir()` en la epica 2. Se acepta porque publicar es una
+          escritura con autor y fecha —queda registrada y se revierte—, no una
+          lectura silenciosa de datos ajenos. */}
+      {paciente.rol === 'nutricionista' && (
+        <>
+          {paciente.plan && <EditarPlan paciente={paciente} sesion={sesion} />}
+          <CopiarPlan paciente={paciente} pacientes={pacientes} sesion={sesion} />
+          <SubirPlan paciente={paciente} sesion={sesion} />
+        </>
+      )}
     </>
   );
 }
