@@ -26,6 +26,13 @@ export interface Paciente {
    * seguro, y despues de 007 no deberia quedar ninguno.
    */
   rol: RolDelVinculo;
+  /**
+   * Cuenta de la semilla. La pantalla lo usa para avisar cuando la siembra
+   * quedo vieja: `historia.mjs` genera los dias hacia atras desde el dia en
+   * que se corre, asi que a las tres semanas la ficha muestra adherencia cero
+   * y racha cero, y eso se lee como un producto que no anda.
+   */
+  esPrueba: boolean;
   id: string;
   nombre: string;
   email: string;
@@ -52,7 +59,7 @@ export async function misPacientes(sesion: Session | null): Promise<Paciente[]> 
 
   const { data: vinculos, error } = await supabase
     .from('care_relationships')
-    .select('id, patient_id, patient_email, rol, profiles!care_relationships_patient_id_fkey(display_name, email, avatar_url)')
+    .select('id, patient_id, patient_email, rol, profiles!care_relationships_patient_id_fkey(display_name, email, avatar_url, es_prueba)')
     .eq('professional_id', sesion.user.id)
     .eq('status', 'active')
     // Sin consentimiento no se comparte nada, y eso incluye el email: la
@@ -160,6 +167,7 @@ export async function misPacientes(sesion: Session | null): Promise<Paciente[]> 
     return {
       vinculoId: v['id'] as string,
       rol: rolPorPaciente.get(id) ?? 'entrenador',
+      esPrueba: esPruebaDe(v['profiles']),
       id,
       nombre: nombreDe(v['profiles']) ?? email,
       email,
@@ -273,6 +281,11 @@ export async function publicarVersion(
     change_note: nota || null,
   });
   if (error) throw error;
+}
+
+function esPruebaDe(perfil: unknown): boolean {
+  const p = Array.isArray(perfil) ? perfil[0] : perfil;
+  return Boolean((p as { es_prueba?: boolean } | null)?.es_prueba);
 }
 
 function nombreDe(perfil: unknown): string | null {

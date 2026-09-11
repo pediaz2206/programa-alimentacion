@@ -3,7 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { validatePlan, type NutritionPlan } from '@pa/core';
 import {
   consultaDe, metricasDe, misPacientes, planesParaCopiar, publicarVersion,
-  type Metricas, type Paciente,
+  type Metricas, type Paciente, type RolDelVinculo,
 } from '../lib/profesional.ts';
 import { invitarPaciente } from '../lib/vinculos.ts';
 import { Seccion } from '../componentes/Seccion.tsx';
@@ -11,6 +11,8 @@ import { Aviso } from '../componentes/Aviso.tsx';
 import { Encabezado } from '../componentes/Encabezado.tsx';
 import { Avatar } from '../componentes/Avatar.tsx';
 import { Consulta } from '../componentes/Consulta.tsx';
+import { AlPie } from '../componentes/AlPie.tsx';
+import { fechaISO } from '../lib/registro.ts';
 
 export function Pacientes({ sesion, pacienteAbierto, onAbrir }: {
   sesion: Session | null;
@@ -26,7 +28,12 @@ export function Pacientes({ sesion, pacienteAbierto, onAbrir }: {
       setPacientes(await misPacientes(sesion));
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo cargar.');
+      // Lo que ya estaba en pantalla se queda: un error de red no es una razon
+      // para vaciar una lista que ya se habia cargado bien. Y sin senal se
+      // dice que es la senal, no un error del servidor.
+      setError(navigator.onLine
+        ? (e instanceof Error ? e.message : 'No se pudo cargar.')
+        : 'Sin señal. Esto es lo último que se pudo traer.');
     } finally {
       setCargando(false);
     }
@@ -51,13 +58,16 @@ export function Pacientes({ sesion, pacienteAbierto, onAbrir }: {
 
       {error && <Aviso texto={error} />}
 
-      {cargando ? (
+      {/* Cargando solo si no hay nada que pintar. Si ya habia una lista, se
+          deja: un estado de carga que tapa datos buenos es un parpadeo. */}
+      {cargando && pacientes.length === 0 ? (
         <p className="vacio">Cargando…</p>
       ) : pacientes.length === 0 ? (
         <section className="tarjeta">
           <p className="vacio">
-            Todavía no hay nadie. Invitá por email y, cuando esa persona acepte,
-            vas a ver su seguimiento acá.
+            Todavía no hay nadie. Invitá por email y, cuando esa persona acepte
+            y te dé acceso, vas a ver su seguimiento acá. Hasta que consienta no
+            aparece, ni siquiera su nombre.
           </p>
         </section>
       ) : (
@@ -120,11 +130,20 @@ function Detalle({ paciente, pacientes, sesion, onVolver }: {
         extra={<Avatar nombre={paciente.nombre} foto={paciente.foto} tamano={46} />}
       />
 
-      {m ? <Panel metricas={m} /> : (
-        <section className="tarjeta"><p className="vacio">Sin plan activo.</p></section>
+      {m ? <Panel metricas={m} rol={paciente.rol} /> : (
+        <section className="tarjeta">
+          <p className="vacio">
+            Sin plan activo, así que no hay contra qué medir la adherencia ni la proteína.
+            {paciente.rol === 'nutricionista'
+              ? ' Subí el plan más abajo y las métricas aparecen solas.'
+              : ' Aparecen cuando la nutricionista publique uno.'}
+          </p>
+        </section>
       )}
 
       {consulta && <Consulta resumen={consulta} nombre={paciente.nombre} />}
+
+      {paciente.esPrueba && <SiembraVencida registros={paciente.registros} />}
 
       <Seccion titulo="Últimos días" resumen={`${paciente.registros.length} comidas registradas`}>
         {paciente.registros.length === 0
@@ -145,7 +164,25 @@ function Detalle({ paciente, pacientes, sesion, onVolver }: {
                 ))}
             </ul>
           )}
+
+        {paciente.rol === 'entrenador' && (
+          <AlPie tipo="alcance">
+            qué comió en cada una. El detalle plato por plato y las fotos son del
+            seguimiento nutricional; acá ves que registró y cuánta proteína sumó.
+          </AlPie>
+        )}
       </Seccion>
+
+      {/* Al pie de la pantalla y sin tarjeta propia. Una tarjeta que solo
+          contiene un cartel de "todavía no" es justo el bloque vacío que esto
+          existe para evitar: se lee como un hueco, no como una nota. */}
+      {paciente.rol === 'entrenador' && (
+        <AlPie tipo="pendiente">
+          composición corporal ni la lectura de adherencia contra cambio. Tampoco podés
+          dejar una propuesta de plan para que la firme la nutricionista. Las dos cosas
+          están planificadas y no construidas.
+        </AlPie>
+      )}
 
       {/* Publicar una version del plan es solo de la nutricionista (FR-10).
           El entrenador propone y ella firma, y ese circuito es de la epica 7:
@@ -167,7 +204,34 @@ function Detalle({ paciente, pacientes, sesion, onVolver }: {
   );
 }
 
-function Panel({ metricas }: { metricas: Metricas }) {
+/**
+ * Una siembra vieja se apaga sola y en silencio: adherencia cero, racha cero,
+ * proteina sin datos. Sin este aviso eso se lee como un producto que no
+ * funciona, justo delante de la persona a la que se lo estas mostrando.
+ *
+ * Se arregla volviendo a sembrar y no corriendo las fechas al leer: la base es
+ * la misma que la de produccion y no se le miente sobre cuando pasaron las
+ * cosas.
+ */
+function SiembraVencida({ registros }: { registros: { fecha: string }[] }) {
+  const ultima = registros.reduce<string | null>(
+    (max, r) => (max == null || r.fecha > max ? r.fecha : max), null);
+  if (ultima == null) return null;
+
+  const dias = Math.floor(
+    (Date.parse(`${fechaISO()}T00:00:00Z`) - Date.parse(`${ultima}T00:00:00Z`)) / 86_400_000);
+  if (dias < 7) return null;
+
+  return (
+    <Aviso texto={
+      `Cuenta de prueba: el último registro sembrado es del ${ultima}, hace ${dias} días. ` +
+      'Los números de arriba están en cero porque la siembra quedó vieja, no porque la ' +
+      'persona haya dejado de registrar. Volvé a correr sembrar.mjs.'
+    } />
+  );
+}
+
+function Panel({ metricas, rol }: { metricas: Metricas; rol: RolDelVinculo }) {
   const { adherencia: a, proteina: p, racha: r, libres } = metricas;
   return (
     <>
@@ -184,21 +248,35 @@ function Panel({ metricas }: { metricas: Metricas }) {
         </p>
       </section>
 
-      {p.objetivo != null && (
-        <section className="tarjeta">
-          <div className="tira-fila">
-            <span className="tira-nombre">Proteína por día</span>
-            <span className="tira-cifra mono">{p.promedio} / {p.objetivo} g</span>
-          </div>
+      {/* Antes, un plan sin objetivo de proteína hacía desaparecer la tarjeta
+          entera. Una ausencia invisible es peor que una explicada: quien mira
+          no puede distinguir "no lo medimos" de "no hay nada que mostrar". */}
+      <section className="tarjeta">
+        <div className="tira-fila">
+          <span className="tira-nombre">Proteína por día</span>
+          <span className="tira-cifra mono">
+            {p.objetivo != null ? `${p.promedio} / ${p.objetivo} g` : `${p.promedio} g`}
+          </span>
+        </div>
+        {p.objetivo != null && (
           <div className="barra-progreso">
             <i style={{ width: `${Math.min(100, (p.promedio / p.objetivo) * 100)}%`, background: 'var(--g-proteinas)' }} />
           </div>
+        )}
+        <p className="nota">
+          Promedio sobre los {p.diasConRegistro} {p.diasConRegistro === 1 ? 'día' : 'días'} con
+          registro. Los días sin datos no bajan el promedio: no sabemos qué pasó, no que comió mal.
+        </p>
+        {p.objetivo == null && (
           <p className="nota">
-            Promedio sobre los {p.diasConRegistro} {p.diasConRegistro === 1 ? 'día' : 'días'} con
-            registro. Los días sin datos no bajan el promedio: no sabemos qué pasó, no que comió mal.
+            Este plan no fija un objetivo en gramos, así que el promedio no se compara
+            contra nada.{' '}
+            {rol === 'nutricionista'
+              ? 'Se carga más abajo, en el plan.'
+              : 'Lo fija la nutricionista en el plan.'}
           </p>
-        </section>
-      )}
+        )}
+      </section>
 
       <div className="duo">
         <div className="tarjeta">

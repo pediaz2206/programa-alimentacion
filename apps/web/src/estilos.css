@@ -139,6 +139,20 @@ h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0;
 .sub { font-size: 12.5px; color: var(--tenue); }
 .nota { font-size: 12.5px; color: var(--tenue); line-height: 1.45; margin: 0; }
 
+/* La aclaración al pie de un bloque: qué no muestra, y si es porque falta
+   construirlo o porque no le corresponde a ese rol. La marca es una palabra
+   y no un color, para que se lea también en escala de grises. */
+.al-pie {
+  margin: 8px 0 0; padding-top: 8px; border-top: 1px dashed var(--linea);
+  font-size: 12px; line-height: 1.45; color: var(--tenue);
+}
+.al-pie-marca {
+  display: inline-block; margin-right: 6px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+}
+.al-pie-pendiente .al-pie-marca { color: var(--indigo); }
+.al-pie-alcance   .al-pie-marca { color: var(--tenue); }
+
 .chip {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
