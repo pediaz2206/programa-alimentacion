@@ -37,6 +37,8 @@ if (!(major > 22 || (major === 22 && minor >= 6))) {
 
 const { createClient } = await import('@supabase/supabase-js');
 import { DOMINIO, email, PACIENTES, PROFESIONALES, VINCULOS } from './personajes.mjs';
+import { randomBytes } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
 import { historiaDe } from './historia.mjs';
 
 const url = process.env['SUPABASE_URL'];
@@ -46,6 +48,9 @@ const borrar = process.argv.includes('--borrar');
 // mirar la vista profesional: hace falta que una cuenta real sea la
 // profesional de los pacientes sembrados.
 const comoProfesional = (process.argv.find((a) => a.startsWith('--profesional=')) ?? '').split('=')[1];
+// Donde escribir las credenciales cuando no hay terminal interactiva. Ver
+// `entregar()`: sin TTY y sin esto, el script prefiere abortar a imprimirlas.
+const archivoCredenciales = (process.argv.find((a) => a.startsWith('--credenciales=')) ?? '').split('=')[1];
 
 if (!url || !clave) {
   console.error(`
@@ -106,25 +111,99 @@ async function limpiar() {
   console.log(`\nListo: ${cuentas.size} cuentas de prueba borradas.`);
 }
 
-async function cuentaDe(correo, nombre, ya) {
+/**
+ * Una contrasena al azar, distinta por cuenta.
+ *
+ * 24 bytes de `randomBytes` en base64url: no es una frase memorable y no tiene
+ * por que serlo, se copia y se pega una vez. Sale del CSPRNG del sistema y no
+ * de Math.random, que es predecible y no sirve para una credencial.
+ */
+function contrasenaAlAzar() {
+  return randomBytes(24).toString('base64url');
+}
+
+/**
+ * Crea la cuenta si no existe, con contrasena.
+ *
+ * A una cuenta que ya existe NO se le cambia: rotar en silencio invalidaria
+ * las credenciales que alguien ya tiene anotadas, y la semilla se corre de
+ * nuevo todo el tiempo. Para rotarlas, `--borrar` y volver a sembrar.
+ */
+async function cuentaDe(correo, nombre, ya, credenciales) {
   if (ya.has(correo)) return ya.get(correo);
+  const contrasena = contrasenaAlAzar();
   const { data, error } = await db.auth.admin.createUser({
     email: correo,
+    password: contrasena,
     email_confirm: true,
     user_metadata: { full_name: nombre },
   });
   if (error) throw error;
+  credenciales.set(correo, contrasena);
   return data.user.id;
+}
+
+/**
+ * Entrega las credenciales una sola vez, y solo donde corresponde.
+ *
+ * El scrollback de una terminal y los logs de un job de CI son dos lugares
+ * distintos: el primero lo ve quien corre el script, el segundo cualquiera con
+ * acceso al repositorio. Sin TTY, entonces, no se imprime nada: o se pasa
+ * `--credenciales=RUTA` o el script aborta.
+ *
+ * No se guardan en la base ni en ningun archivo del repo: viven en auth.users
+ * hasheadas, y en la cabeza de quien las copio.
+ */
+function entregar(credenciales) {
+  if (credenciales.size === 0) {
+    console.log('\nNo se crearon cuentas nuevas: las contraseñas anteriores siguen valiendo.');
+    console.log('Para rotarlas: --borrar y volver a sembrar.');
+    return;
+  }
+
+  const lineas = [...credenciales].map(([correo, clave]) => `${correo}  ${clave}`);
+
+  if (archivoCredenciales) {
+    writeFileSync(archivoCredenciales, lineas.join('\n') + '\n', { mode: 0o600 });
+    console.log(`\nCredenciales escritas en ${archivoCredenciales} (permisos 600).`);
+    console.log('Está fuera del repositorio a proposito. Borralo cuando termines.');
+    return;
+  }
+
+  if (!process.stdout.isTTY) {
+    console.error(`
+No hay terminal interactiva y no se pasó --credenciales=RUTA.
+
+  Se crearon ${credenciales.size} cuentas con contraseña y no se van a imprimir:
+  la salida redirigida termina en un archivo o en los logs de un job, que los
+  lee cualquiera con acceso al repositorio.
+
+  Corré de nuevo con --credenciales=/ruta/fuera/del/repo.txt
+  o desde una terminal.
+
+  Las cuentas YA están creadas. Para rehacerlas: --borrar y volver a sembrar.`);
+    process.exit(1);
+  }
+
+  console.log('\nCredenciales — se muestran una sola vez');
+  for (const linea of lineas) console.log(`  ${linea}`);
+  console.log(`
+  No quedan guardadas en ningún lado: anotálas ahora.
+  Sirven solo donde el despliegue compile con VITE_LOGIN_PRUEBA=on.
+  Para rotarlas: --borrar y volver a sembrar.`);
 }
 
 async function sembrar() {
   const ya = await existentes();
   const ids = new Map();
+  // Solo las cuentas creadas en esta corrida. A las que ya existían no se les
+  // toca la contraseña, así que no hay nada nuevo que entregar sobre ellas.
+  const credenciales = new Map();
 
   console.log('Cuentas');
   for (const p of [...PACIENTES, ...PROFESIONALES]) {
     const correo = email(p.slug);
-    const id = await cuentaDe(correo, p.nombre, ya);
+    const id = await cuentaDe(correo, p.nombre, ya, credenciales);
     ids.set(p.slug, id);
     console.log(`  ${ya.has(correo) ? 'ya estaba' : 'creada  '}  ${p.slug}`);
   }
@@ -219,13 +298,14 @@ async function sembrar() {
   if (comoProfesional) await sumarProfesionalReal(comoProfesional, ids);
 
   console.log(`
-Listo. Las cuentas de prueba no pueden iniciar sesión con Google —el dominio
-${DOMINIO} no existe—, así que sirven para ver la app desde la vista
-profesional, no para entrar como ellas. Para probar el ingreso hacen falta
-cuentas de Google reales.
+Listo. Estas cuentas no entran por Google —el dominio ${DOMINIO} no
+existe— pero sí con email y contraseña, en un despliegue compilado con
+VITE_LOGIN_PRUEBA=on. Ahí se puede recorrer la app como paciente, como
+nutricionista o como entrenador.
 
-Para deshacer:  node supabase/semillas/sembrar.mjs --borrar
-`);
+Para deshacer:  node supabase/semillas/sembrar.mjs --borrar`);
+
+  entregar(credenciales);
 }
 
 /**

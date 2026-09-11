@@ -45,6 +45,22 @@ que agrega la marca `profiles.es_prueba`;
 
 ## Entrar con esas cuentas
 
+Al crear cada cuenta, la semilla le asigna una contraseña al azar —24 bytes de
+`crypto.randomBytes`— y la entrega **una sola vez**:
+
+- **Desde una terminal**, las imprime al final.
+- **Sin terminal interactiva** —salida redirigida, un job de CI— no imprime
+  nada y aborta. El scrollback lo ve quien corre el script; un log de job lo lee
+  cualquiera con acceso al repositorio, y no son lo mismo. Para ese caso,
+  `--credenciales=/ruta/fuera/del/repo.txt`, que escribe el archivo con
+  permisos 600.
+
+A una cuenta que ya existe **no** se le cambia la contraseña: la semilla se
+corre seguido y rotar en silencio invalidaría lo que alguien ya tiene anotado.
+Para rotarlas, `--borrar` y volver a sembrar.
+
+No quedan guardadas en ningún lado fuera de `auth.users`, hasheadas.
+
 El formulario de email y contraseña se compila solo donde la bandera lo
 enciende:
 
@@ -101,10 +117,10 @@ verificación en el build que aborta si aparece en el bundle.
 
 ## Dos cosas que conviene saber
 
-**No pueden iniciar sesión.** El dominio `prueba.en-punto.local` no existe y la
-app entra por Google. Sirven para ver la app desde la vista profesional —que es
-donde hay más para probar y menos para mirar hoy—, no para entrar como ellas.
-Para probar el ingreso hacen falta cuentas de Google reales.
+**Entran por contraseña, no por Google.** El dominio `prueba.en-punto.local` no
+existe, así que el botón de Google no sirve para ellas. Sí el formulario de
+email y contraseña, en un despliegue compilado con `VITE_LOGIN_PRUEBA=on`: ahí
+se recorre la app como paciente, como nutricionista o como entrenador.
 
 **La historia es fea a propósito.** Tiene días sin registrar, comidas
 salteadas, desvíos y reglas incumplidas. Una semilla prolija prueba la mitad de
