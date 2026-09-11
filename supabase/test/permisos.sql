@@ -174,3 +174,91 @@ select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
 select pruebas.check('una profesional no ve el perfil de otra',
   exists (select 1 from public.profiles
           where id = '33333333-3333-3333-3333-333333333333'), false);
+
+-- 11. Aislamiento de las cuentas de prueba: solo se vinculan entre ellas.
+--     Van dos cuentas nuevas, una profesional de prueba y una paciente de
+--     prueba, para poder cruzar las cuatro combinaciones.
+set role postgres;
+insert into auth.users (id, email) values
+  ('44444444-4444-4444-4444-444444444444', 'nutri@prueba.en-punto.local'),
+  ('55555555-5555-5555-5555-555555555555', 'pac@prueba.en-punto.local');
+insert into public.profiles (id, display_name, email, is_professional, es_prueba) values
+  ('44444444-4444-4444-4444-444444444444', 'Nutri de prueba',
+   'nutri@prueba.en-punto.local', true, true),
+  ('55555555-5555-5555-5555-555555555555', 'Paciente de prueba',
+   'pac@prueba.en-punto.local', false, true);
+set role authenticated;
+
+-- La funcion contesta bien aunque quien pregunta no pueda leer ese perfil.
+select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+select pruebas.check('una cuenta de prueba se reconoce como tal',
+  public.es_cuenta_de_prueba('55555555-5555-5555-5555-555555555555'), true);
+select pruebas.check('una cuenta real no',
+  public.es_cuenta_de_prueba('11111111-1111-1111-1111-111111111111'), false);
+select pruebas.check('un email que no existe no es de prueba',
+  public.es_email_de_prueba('nadie@ejemplo.com'), false);
+
+-- Intentar un insert y contestar si la policy lo dejo, en vez de abortar la
+-- prueba entera. Corre como quien llama, asi que RLS la alcanza igual.
+set role postgres;
+create or replace function pruebas.puede_invitar(prof uuid, correo text)
+returns boolean language plpgsql as $$
+begin
+  insert into public.care_relationships (professional_id, patient_id, patient_email, status)
+  values (prof, null, correo, 'pending');
+  return true;
+exception when insufficient_privilege then
+  return false;
+end $$;
+grant execute on function pruebas.puede_invitar(uuid, text) to authenticated;
+set role authenticated;
+
+-- a) Profesional de prueba -> paciente real: NO.
+select set_config('test.uid', '44444444-4444-4444-4444-444444444444', false);
+select pruebas.check('una profesional de prueba no invita a una cuenta real',
+  pruebas.puede_invitar('44444444-4444-4444-4444-444444444444', 'paciente@ejemplo.com'), false);
+
+-- b) Profesional de prueba -> paciente de prueba: SI.
+select pruebas.check('entre cuentas de prueba el vinculo se crea',
+  pruebas.puede_invitar('44444444-4444-4444-4444-444444444444', 'pac@prueba.en-punto.local'), true);
+
+-- c) Profesional real -> paciente de prueba: NO, la direccion contraria.
+select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+select pruebas.check('una profesional real no invita a una cuenta de prueba',
+  pruebas.puede_invitar('22222222-2222-2222-2222-222222222222', 'pac@prueba.en-punto.local'), false);
+
+-- e) Ni por update: la profesional de prueba no puede atar su invitacion a una
+--    cuenta real a mano. `using` la deja tocar su propia fila; `with check` es
+--    lo que niega el destino.
+set role postgres;
+create or replace function pruebas.puede_atar(prof uuid, pac uuid)
+returns boolean language plpgsql as $$
+begin
+  update public.care_relationships set patient_id = pac
+  where professional_id = prof and patient_id is null;
+  return found;
+exception when insufficient_privilege then
+  return false;
+end $$;
+grant execute on function pruebas.puede_atar(uuid, uuid) to authenticated;
+set role authenticated;
+
+select set_config('test.uid', '44444444-4444-4444-4444-444444444444', false);
+select pruebas.check('una profesional de prueba no ata su invitacion a una cuenta real',
+  pruebas.puede_atar('44444444-4444-4444-4444-444444444444',
+                     '11111111-1111-1111-1111-111111111111'), false);
+select pruebas.check('pero si a una cuenta de prueba',
+  pruebas.puede_atar('44444444-4444-4444-4444-444444444444',
+                     '55555555-5555-5555-5555-555555555555'), true);
+
+-- d) Reclamar: una cuenta real no se ata a una invitacion de prueba aunque el
+--    email coincida. Es el camino que no pasa por ninguna policy.
+set role postgres;
+update public.profiles set email = 'pac@prueba.en-punto.local'
+where id = '11111111-1111-1111-1111-111111111111';
+update auth.users set email = 'pac@prueba.en-punto.local'
+where id = '11111111-1111-1111-1111-111111111111';
+set role authenticated;
+select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
+select pruebas.check('una cuenta real no reclama una invitacion de prueba',
+  public.reclamar_invitaciones() = 0, true);

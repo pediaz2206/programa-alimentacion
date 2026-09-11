@@ -98,6 +98,57 @@ revoke all on function public.has_care_access(uuid) from public;
 grant execute on function public.has_care_access(uuid) to authenticated;
 
 /**
+ * Si esa cuenta es de la semilla de pruebas.
+ *
+ * Es security definer porque quien pregunta casi nunca puede leer el perfil
+ * del otro: `profiles` tiene RLS y solo se ve el propio, el de un paciente
+ * vinculado o el de quien te invito. Un `exists` suelto contra `profiles`
+ * dentro de una policy devolveria falso por falta de permiso, no por ser
+ * falso, y "no se" se leeria como "no es de prueba": el default inseguro.
+ *
+ * Nulo —una cuenta sin perfil todavia— cuenta como no de prueba, que es lo
+ * que es: una cuenta real recien creada.
+ */
+create or replace function public.es_cuenta_de_prueba(persona uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((select p.es_prueba from public.profiles p where p.id = persona), false);
+$$;
+
+revoke all on function public.es_cuenta_de_prueba(uuid) from public;
+grant execute on function public.es_cuenta_de_prueba(uuid) to authenticated;
+
+/**
+ * Lo mismo, por email.
+ *
+ * Hace falta porque se invita por email y sin id: en el momento del insert la
+ * otra punta todavia no es una fila de auth.users. Devuelve falso para un
+ * email que no existe, que es lo correcto en las dos direcciones: invitar a
+ * alguien que todavia no se registro tiene que seguir andando, y esa persona
+ * no es de prueba.
+ *
+ * No filtra nada que el que pregunta no supiera: ya escribio ese email.
+ */
+create or replace function public.es_email_de_prueba(correo text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (select p.es_prueba from public.profiles p where lower(p.email) = lower(correo)),
+    false);
+$$;
+
+revoke all on function public.es_email_de_prueba(text) from public;
+grant execute on function public.es_email_de_prueba(text) to authenticated;
+
+/**
  * Reclama las invitaciones dirigidas al email de quien llama.
  *
  * La invitacion se crea sin patient_id porque la profesional solo conoce el
@@ -122,6 +173,10 @@ begin
   set patient_id = auth.uid()
   where r.patient_id is null
     and lower(r.patient_email) = lower(auth.email())
+    -- El tercer camino hacia un vinculo: la policy de insert no alcanza si
+    -- despues esta funcion ata la invitacion a cualquiera. Es security
+    -- definer, asi que la condicion va adentro o no existe.
+    and public.es_cuenta_de_prueba(r.professional_id) = public.es_cuenta_de_prueba(auth.uid())
     and not exists (
       select 1 from public.care_relationships otro
       where otro.professional_id = r.professional_id and otro.patient_id = auth.uid()
@@ -312,17 +367,30 @@ create policy care_rel_visible on public.care_relationships
   for select using (patient_id = auth.uid() or professional_id = auth.uid());
 
 -- Solo se invita en nombre propio, y solo quien se declaro profesional.
+--
+-- La ultima condicion aisla la semilla: las dos puntas tienen que coincidir en
+-- ser de prueba o no serlo. Una demo no toca datos de una persona real, y una
+-- cuenta real no termina con un profesional de mentira. Se compara por email
+-- porque al invitar todavia no hay id.
 drop policy if exists care_rel_invite on public.care_relationships;
 create policy care_rel_invite on public.care_relationships
   for insert with check (
     professional_id = auth.uid()
     and exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_professional)
+    and public.es_cuenta_de_prueba(auth.uid()) = public.es_email_de_prueba(patient_email)
   );
 
+-- Aceptar, consentir y revocar. La condicion de prueba se repite acá porque
+-- sin ella el aislamiento se saltea por el otro lado: una fila con el email de
+-- una cuenta real, y despues un update que le pone el patient_id.
 drop policy if exists care_rel_update on public.care_relationships;
 create policy care_rel_update on public.care_relationships
   for update using (patient_id = auth.uid() or professional_id = auth.uid())
-  with check (patient_id = auth.uid() or professional_id = auth.uid());
+  with check (
+    (patient_id = auth.uid() or professional_id = auth.uid())
+    and (patient_id is null
+         or public.es_cuenta_de_prueba(professional_id) = public.es_cuenta_de_prueba(patient_id))
+  );
 
 -- Planes: el paciente manda; la profesional con acceso lee y escribe, pero
 -- no borra.

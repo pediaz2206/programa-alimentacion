@@ -323,6 +323,11 @@ para ver la pestaña de seguimiento con la vista que me corresponde.
 `('nutricionista', 'entrenador')` y única por persona y rol
 **When** se crea con su migración
 **Then** nace con RLS activa y su política en el mismo archivo
+**And** las políticas son dos y están nombradas: una de `select` sobre las filas propias
+—`person_id = auth.uid()`— y ninguna de escritura desde el cliente, porque en esta épica
+los roles los pone la semilla
+**And** sin la de lectura, RLS niega por defecto y la pestaña no aparece para **nadie**,
+lo que parece un error de esta historia y es una línea que faltó
 **And** no trae columnas de matrícula ni de verificación: eso es la épica 3
 
 **Given** que `care_relationships` gana la columna `rol`, con el mismo `check`
@@ -400,6 +405,15 @@ niega: el default seguro es no ver la foto
 **And** una persona con los dos roles sobre el mismo paciente ve las fotos por su vínculo
 de nutricionista, porque la condición es del vínculo y no de la persona
 
+**Given** que `misPacientes` filtra por `status = 'active'` y no por consentimiento
+**When** tengo un vínculo activo con alguien que todavía no consintió —el caso
+`entrenador-1 → paciente-c` de la semilla, puesto ahí para esto—
+**Then** esa persona no aparece en mi lista
+**And** el motivo no es cosmético: `patient_email` es columna de
+`care_relationships` y la ve el profesional por `care_rel_visible`, así que sin este
+filtro le estamos mostrando el email de alguien que no consintió nada (NFR-1)
+**And** RLS no lo tapa, porque el email está una capa antes que los datos de salud
+
 **Given** un vínculo pendiente, revocado o sin consentir
 **When** intento abrir esa ficha
 **Then** no aparece en mi lista, y pedirla directo por su id no devuelve datos
@@ -443,6 +457,14 @@ todavía no son lo mismo
 **Given** que la app está cargando y no hay copia local
 **When** espero
 **Then** veo un estado de carga; si hay copia local, no lo veo y se pinta lo que había
+
+**Given** que `historia.mjs` genera los días hacia atrás desde la fecha de siembra
+**When** la siembra tiene más de una semana
+**Then** la pantalla lo dice —"esta siembra es del 10 de septiembre"— en vez de mostrar
+adherencia cero, racha cero y proteína sin datos
+**And** se arregla volviendo a sembrar, no corriendo las fechas al leer: esa base es la
+misma que la de producción y no se le miente sobre cuándo pasaron las cosas
+**And** sin el aviso, una semilla vencida se lee como un producto que no funciona
 
 **Given** cualquiera de los cuatro estados
 **When** los reviso

@@ -32,7 +32,27 @@ permiso de profesional queda —`profiles.is_professional = false` para sacarlo�
 porque es una cuenta real y borrarle permisos por las dudas es peor.
 
 Antes hace falta haber corrido `supabase/migraciones/005-datos-de-prueba.sql`,
-que agrega la marca `profiles.es_prueba`.
+que agrega la marca `profiles.es_prueba`, y
+`006-aislar-cuentas-de-prueba.sql`, que la hace valer.
+
+## El aislamiento
+
+Una cuenta de prueba y una real no se pueden vincular, en ninguna de las dos
+direcciones. Son datos de salud con la misma forma en la misma base: lo único
+que las separa es esa marca, así que la separación la aplica Postgres y no el
+cliente.
+
+Se cierran los tres caminos hacia un vínculo —invitar, aceptar y reclamar la
+invitación al entrar con ese email—, el tercero adentro de
+`reclamar_invitaciones()`, que es `security definer` y no pasa por ninguna
+política. Hay una aserción por camino en `supabase/test/permisos.sql`.
+
+Lo que **no** impide: que una cuenta de prueba escriba lo suyo —su plan, sus
+comidas, sus fotos—. Para una demo está bien, porque lo suyo es de mentira. Lo
+que no puede pasar es que toque lo de otro.
+
+La semilla corre con `service_role`, que saltea RLS, así que crea sus vínculos
+sin que estas políticas la molesten.
 
 La clave `service_role` se lee del ambiente y no se guarda en ningún lado. No
 va en un archivo del repo ni con prefijo `VITE_`: saltea RLS, y hay una
