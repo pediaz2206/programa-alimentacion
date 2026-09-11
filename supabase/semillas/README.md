@@ -41,7 +41,9 @@ Antes hace falta haber corrido `supabase/migraciones/005-datos-de-prueba.sql`,
 que agrega la marca `profiles.es_prueba`;
 `006-aislar-cuentas-de-prueba.sql`, que la hace valer; y
 `007-roles-profesionales.sql`, que crea `professional_roles` y la columna
-`care_relationships.rol`.
+`care_relationships.rol`. Y `008-quien-escribe-que.sql`, que fija qué
+columna de un vínculo puede tocar cada parte: sin ella, el profesional se
+concede el consentimiento solo y el entrenador se asciende a nutricionista.
 
 ## Entrar con esas cuentas
 

@@ -54,14 +54,20 @@ select pruebas.check('vinculo pendiente no alcanza',
   public.has_care_access('11111111-1111-1111-1111-111111111111'), false);
 
 -- 3. Activo pero SIN consentimiento: sigue sin ver. Son datos de salud.
+-- Aceptar es del paciente: la preparacion actua como el, no como ella.
+select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
 update public.care_relationships set status = 'active', accepted_at = now()
 where patient_id = '11111111-1111-1111-1111-111111111111';
+select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
 select pruebas.check('activo sin consentimiento no alcanza',
   public.has_care_access('11111111-1111-1111-1111-111111111111'), false);
 
 -- 4. Activo Y consentido: recien ahora ve.
+-- Consentir tambien.
+select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
 update public.care_relationships set consent_granted_at = now(), consent_version = 'v1'
 where patient_id = '11111111-1111-1111-1111-111111111111';
+select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
 select pruebas.check('activo y consentido concede acceso',
   public.has_care_access('11111111-1111-1111-1111-111111111111'), true);
 
@@ -75,9 +81,15 @@ select pruebas.check('un vinculo sin rol declarado no ve las fotos',
   exists (select 1 from storage.objects where bucket_id = 'meal-photos'), false);
 
 set role postgres;
+-- El rol lo pone el sistema al crear el vinculo, no una de las partes: la
+-- preparacion lo escribe sin sesion, como lo hace la semilla.
+set role postgres;
+select set_config('test.uid', '', false);
 update public.care_relationships set rol = 'nutricionista'
 where patient_id = '11111111-1111-1111-1111-111111111111'
   and professional_id = '22222222-2222-2222-2222-222222222222';
+set role authenticated;
+select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
 set role authenticated;
 
 select pruebas.check('ve la foto de la comida',
@@ -98,9 +110,14 @@ select pruebas.check('revocar oculta el peso y la cintura',
   exists (select 1 from public.body_measurements where patient_id = '11111111-1111-1111-1111-111111111111'), false);
 
 -- 6. Un profesional ajeno nunca ve nada, aunque el vinculo del otro este vigente.
+--    Reactivar un vinculo revocado no es un acto de ninguna de las partes hoy:
+--    la preparacion lo hace sin sesion.
+set role postgres;
+select set_config('test.uid', '', false);
 update public.care_relationships
 set status = 'active', revoked_at = null, consent_granted_at = now()
 where patient_id = '11111111-1111-1111-1111-111111111111';
+set role authenticated;
 select set_config('test.uid', '33333333-3333-3333-3333-333333333333', false);
 select pruebas.check('un profesional ajeno no tiene acceso',
   public.has_care_access('11111111-1111-1111-1111-111111111111'), false);
@@ -238,9 +255,12 @@ select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
 select pruebas.check('una profesional real no invita a una cuenta de prueba',
   pruebas.puede_invitar('22222222-2222-2222-2222-222222222222', 'pac@prueba.en-punto.local'), false);
 
--- e) Ni por update: la profesional de prueba no puede atar su invitacion a una
---    cuenta real a mano. `using` la deja tocar su propia fila; `with check` es
---    lo que niega el destino.
+-- e) Ni por update: atar un vinculo es del paciente que reclama, nunca del
+--    profesional. Antes `using` lo dejaba tocar su propia fila y solo el
+--    `with check` de la 1.2 negaba el destino real, asi que a una cuenta de
+--    prueba si podia. Ahora el trigger de 008 lo niega en las dos
+--    direcciones: `patient_id` solo va de nulo a quien reclama, y solo a si
+--    mismo.
 set role postgres;
 create or replace function pruebas.puede_atar(prof uuid, pac uuid)
 returns boolean language plpgsql as $$
@@ -258,9 +278,15 @@ select set_config('test.uid', '44444444-4444-4444-4444-444444444444', false);
 select pruebas.check('una profesional de prueba no ata su invitacion a una cuenta real',
   pruebas.puede_atar('44444444-4444-4444-4444-444444444444',
                      '11111111-1111-1111-1111-111111111111'), false);
-select pruebas.check('pero si a una cuenta de prueba',
+select pruebas.check('ni siquiera a una cuenta de prueba',
   pruebas.puede_atar('44444444-4444-4444-4444-444444444444',
-                     '55555555-5555-5555-5555-555555555555'), true);
+                     '55555555-5555-5555-5555-555555555555'), false);
+
+-- El camino legitimo: el propio paciente reclama la invitacion dirigida a su
+-- email. Es el unico que el trigger deja pasar.
+select set_config('test.uid', '55555555-5555-5555-5555-555555555555', false);
+select pruebas.check('el paciente de prueba si reclama la suya',
+  public.reclamar_invitaciones() = 1, true);
 
 -- d) Reclamar: una cuenta real no se ata a una invitacion de prueba aunque el
 --    email coincida. Es el camino que no pasa por ninguna policy.
@@ -359,12 +385,121 @@ select pruebas.check('un profesional ajeno no ve nada por la vista sin detalle',
   exists (select 1 from public.registro_sin_detalle
           where patient_id = '11111111-1111-1111-1111-111111111111'), false);
 
--- Alguien con los dos roles sobre la misma persona ve las fotos: la condicion
--- es del vinculo, y el de nutricionista la habilita.
+-- Si ese mismo vinculo se hubiera creado como nutricionista, las fotos si.
+--
+-- OJO: no es "los dos roles a la vez". `care_rel_unico_paciente` prohibe dos
+-- vinculos entre las mismas dos personas, asi que acumular nutricionista y
+-- entrenador sobre el mismo paciente NO es representable. Esta asercion
+-- compara dos vinculos posibles, no dos simultaneos.
 set role postgres;
+select set_config('test.uid', '', false);
 update public.care_relationships set rol = 'nutricionista'
 where professional_id = '66666666-6666-6666-6666-666666666666';
 set role authenticated;
 select set_config('test.uid', '66666666-6666-6666-6666-666666666666', false);
-select pruebas.check('con el vinculo de nutricionista, las mismas fotos si',
+select pruebas.check('con un vinculo de nutricionista, las mismas fotos si',
   public.ve_fotos('11111111-1111-1111-1111-111111111111'), true);
+
+-- 14. Quien escribe que columna de un vinculo.
+--
+--     Las 53 aserciones anteriores probaban que SIN consentimiento no se ve.
+--     Ninguna probaba que el consentimiento no se lo pueda poner uno mismo, y
+--     esa era la unica que importaba: la parte restringida abria su propia
+--     compuerta con un update sobre su propia fila.
+set role postgres;
+create or replace function pruebas.intentar(sentencia text)
+returns boolean language plpgsql as $$
+begin
+  execute sentencia;
+  return true;
+exception when insufficient_privilege then
+  return false;
+end $$;
+grant execute on function pruebas.intentar(text) to authenticated;
+
+-- Un vinculo nuevo entre el paciente principal y una nutricionista: activo,
+-- aceptado, y todavia SIN consentir.
+select set_config('test.uid', '', false);
+update public.care_relationships set consent_granted_at = null, consent_version = null
+where professional_id = '22222222-2222-2222-2222-222222222222'
+  and patient_id = '11111111-1111-1111-1111-111111111111';
+set role authenticated;
+
+select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+select pruebas.check('sin consentimiento no ve (control)',
+  public.has_care_access('11111111-1111-1111-1111-111111111111'), false);
+
+select pruebas.check('la profesional NO se concede el consentimiento sola',
+  pruebas.intentar($$update public.care_relationships
+    set consent_granted_at = now(), consent_version = 'v1'
+    where professional_id = '22222222-2222-2222-2222-222222222222'$$), false);
+select pruebas.check('y sigue sin ver',
+  public.has_care_access('11111111-1111-1111-1111-111111111111'), false);
+
+select pruebas.check('tampoco acepta en nombre del paciente',
+  pruebas.intentar($$update public.care_relationships set accepted_at = now()
+    where professional_id = '22222222-2222-2222-2222-222222222222'$$), false);
+
+-- El consentimiento es del paciente y funciona.
+select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
+select pruebas.check('el paciente si consiente',
+  pruebas.intentar($$update public.care_relationships
+    set consent_granted_at = now(), consent_version = 'v1'
+    where patient_id = '11111111-1111-1111-1111-111111111111'
+      and professional_id = '22222222-2222-2222-2222-222222222222'$$), true);
+select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+select pruebas.check('y recien ahi ve',
+  public.has_care_access('11111111-1111-1111-1111-111111111111'), true);
+
+-- El rol del vinculo no lo escribe ninguna de las dos partes: es lo que
+-- sostiene a ve_fotos(), asi que si el entrenador se lo pudiera cambiar,
+-- FR-21 no existiria.
+-- El bloque 13 dejo ese vinculo en 'nutricionista'. Se vuelve a 'entrenador'
+-- o el update de abajo es un no-op y la asercion pasa sin probar nada.
+set role postgres;
+select set_config('test.uid', '', false);
+update public.care_relationships set rol = 'entrenador'
+where professional_id = '66666666-6666-6666-6666-666666666666';
+set role authenticated;
+
+select set_config('test.uid', '66666666-6666-6666-6666-666666666666', false);
+select pruebas.check('parte de entrenador (control)',
+  (select rol from public.care_relationships
+   where professional_id = '66666666-6666-6666-6666-666666666666') = 'entrenador', true);
+select pruebas.check('el entrenador NO se asciende a nutricionista',
+  pruebas.intentar($$update public.care_relationships set rol = 'nutricionista'
+    where professional_id = '66666666-6666-6666-6666-666666666666'$$), false);
+
+select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
+select pruebas.check('ni el paciente le cambia el rol a su profesional',
+  pruebas.intentar($$update public.care_relationships set rol = 'entrenador'
+    where patient_id = '11111111-1111-1111-1111-111111111111'$$), false);
+
+-- Nadie reapunta un vinculo a otras personas.
+select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+select pruebas.check('una profesional no se lleva el vinculo a otro paciente',
+  pruebas.intentar($$update public.care_relationships
+    set patient_id = '33333333-3333-3333-3333-333333333333'
+    where professional_id = '22222222-2222-2222-2222-222222222222'$$), false);
+select pruebas.check('ni lo cede a otra profesional',
+  pruebas.intentar($$update public.care_relationships
+    set professional_id = '33333333-3333-3333-3333-333333333333'
+    where professional_id = '22222222-2222-2222-2222-222222222222'$$), false);
+
+-- Esa ultima la cubria RLS igual: al mover `professional_id` la fila nueva
+-- deja de satisfacer el `with check`. Del lado del paciente NO: la fila sigue
+-- siendo suya, asi que el `with check` pasa y lo unico que lo niega es el
+-- trigger. Es la unica de las tres que el trigger sostiene solo.
+select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
+select pruebas.check('el paciente tampoco se cambia de profesional',
+  pruebas.intentar($$update public.care_relationships
+    set professional_id = '33333333-3333-3333-3333-333333333333'
+    where patient_id = '11111111-1111-1111-1111-111111111111'
+      and professional_id = '22222222-2222-2222-2222-222222222222'$$), false);
+select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+
+-- Lo que el profesional SI puede: cortar el vinculo.
+select pruebas.check('la profesional si puede cortar el vinculo',
+  pruebas.intentar($$update public.care_relationships
+    set status = 'revoked', revoked_at = now()
+    where professional_id = '22222222-2222-2222-2222-222222222222'$$), true);

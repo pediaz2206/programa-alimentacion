@@ -27,4 +27,11 @@ run -q -f "$DIR/schema.sql" 2>&1 | grep -v 'does not exist, skipping' || true
 # despues del schema porque alcanzan a las tablas que este acaba de crear.
 run -q -c 'grant all on all tables in schema public, storage to authenticated;' >/dev/null
 run -q -c 'create schema pruebas; grant usage on schema pruebas to authenticated;' >/dev/null
-run -f "$DIR/permisos.sql" 2>&1 | grep -E 'ok  |FALLO|ERROR' | sed 's/^psql:[^ ]* //;s/NOTICE:  //'
+SALIDA=$(run -f "$DIR/permisos.sql" 2>&1 | grep -E 'ok  |FALLO|ERROR' | sed 's/^psql:[^ ]* //;s/NOTICE:  //')
+echo "$SALIDA"
+# El conteo lo imprime la corrida, no un numero escrito a mano en AGENTS.md:
+# una cifra que se mantiene sola es la que sirve para notar una asercion que
+# se perdio. Contar `select pruebas.check` a ojo no da lo mismo, porque hay
+# aserciones adentro de bloques plpgsql.
+echo "---"
+echo "$SALIDA" | grep -c '^ok  ' | xargs printf '%s aserciones pasaron\n'

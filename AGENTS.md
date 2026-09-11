@@ -29,7 +29,7 @@ roles en `docs/`.
 - Node >= 22.6 (`.nvmrc`, `engines`). El proyecto corre TypeScript sin compilar con
   `--experimental-strip-types`, que no existe antes.
 - `npm run check` corre typecheck y los tests de `packages/core`. No incluye
-  `npm run test:db`, que son las 54 aserciones de RLS sobre un Postgres efímero:
+  `npm run test:db`, las aserciones de RLS (la corrida imprime cuántas) sobre un Postgres efímero:
   corrélo aparte cuando toques `supabase/`.
 - No hay CI. Nada corre solo: lo que no se verifique acá llega a producción.
 

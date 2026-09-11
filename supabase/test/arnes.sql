@@ -27,5 +27,9 @@ $$ select string_to_array(name, '/') $$;
 
 -- En Supabase el rol `authenticated` ya viene con permisos sobre public y
 -- storage. Aca hay que concederlos para que RLS sea lo unico que decide.
+-- En Supabase `authenticated` puede llamar a auth.uid(): es lo que hace andar
+-- cualquier policy. Hasta ahora el arnes no lo concedia y funcionaba igual
+-- porque las expresiones de policy se evaluan aparte; un trigger, no.
+grant usage on schema auth to authenticated;
 grant usage on schema public, storage to authenticated;
 alter default privileges in schema public grant all on tables to authenticated;
