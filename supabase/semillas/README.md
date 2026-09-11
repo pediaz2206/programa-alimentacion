@@ -25,15 +25,23 @@ sembrados:
 ... node supabase/semillas/sembrar.mjs --profesional=vos@gmail.com
 ```
 
+Desde que existe el acceso por contraseña esto ya casi no hace falta: se puede
+entrar directamente como `nutri-1` o `entrenador-1`. Queda para el caso de
+querer ver la vista profesional desde la propia cuenta de Google.
+
 Esa cuenta tiene que haber entrado a la app con Google al menos una vez. Queda
-marcada como profesional y vinculada a los cuatro pacientes, activa y
-consentida. Al borrar la semilla los vínculos se van con las cuentas; el
+marcada como nutricionista y vinculada a los cuatro pacientes, activa y
+consentida. **Cruza a propósito el límite de más abajo** —una cuenta real con
+cuentas de prueba—: funciona porque la semilla corre con `service_role`, que
+saltea RLS. Es la única excepción y se hace a mano. Al borrar la semilla los vínculos se van con las cuentas; el
 permiso de profesional queda —`profiles.is_professional = false` para sacarlo—,
 porque es una cuenta real y borrarle permisos por las dudas es peor.
 
 Antes hace falta haber corrido `supabase/migraciones/005-datos-de-prueba.sql`,
-que agrega la marca `profiles.es_prueba`, y
-`006-aislar-cuentas-de-prueba.sql`, que la hace valer.
+que agrega la marca `profiles.es_prueba`;
+`006-aislar-cuentas-de-prueba.sql`, que la hace valer; y
+`007-roles-profesionales.sql`, que crea `professional_roles` y la columna
+`care_relationships.rol`.
 
 ## Entrar con esas cuentas
 

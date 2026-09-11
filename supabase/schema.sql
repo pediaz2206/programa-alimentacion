@@ -34,6 +34,25 @@ create table if not exists public.profiles (
 
 -- ------------------------------------------------------------- el vinculo --
 
+-- Los roles profesionales de una persona. Una fila por rol: los roles se
+-- acumulan y ser profesional no impide ser paciente, asi que no es una columna
+-- ni un enum unico.
+--
+-- Reemplaza a profiles.is_professional como la fuente que lee la app. La
+-- columna sigue existiendo y las policias de care_relationships la siguen
+-- exigiendo: unificar las dos fuentes es trabajo de la epica 2.
+--
+-- Todavia no hay matricula ni verificacion. Eso es la epica 3, y llega como
+-- columnas nuevas de esta tabla.
+create table if not exists public.professional_roles (
+  person_id  uuid not null references auth.users (id) on delete cascade,
+  -- Enumerado como text con check, no como tipo enum: agregar un valor a un
+  -- enum de Postgres no se puede revertir dentro de una transaccion.
+  rol        text not null check (rol in ('nutricionista', 'entrenador')),
+  created_at timestamptz not null default now(),
+  primary key (person_id, rol)
+);
+
 -- El unico lugar donde se decide quien puede ver los datos de quien.
 create table if not exists public.care_relationships (
   id                 uuid primary key default gen_random_uuid(),
@@ -47,6 +66,13 @@ create table if not exists public.care_relationships (
   -- 'pending': invitada pero sin aceptar. 'active': vigente. 'revoked': cortada.
   status             text not null default 'pending'
                      check (status in ('pending', 'active', 'revoked')),
+  -- Con que rol se creo el vinculo. La misma persona puede seguir a alguien
+  -- como nutricionista y a otro como entrenador, asi que la pregunta "con que
+  -- rol" es del vinculo y no de la persona.
+  --
+  -- Nulo en los vinculos de antes de que existiera la columna. Nulo niega:
+  -- donde se exige un rol, no tenerlo es no tenerlo.
+  rol                text check (rol in ('nutricionista', 'entrenador')),
   invited_at         timestamptz not null default now(),
   accepted_at        timestamptz,
   -- Cortar el vinculo es un derecho del paciente y tiene efecto inmediato:
@@ -338,6 +364,7 @@ create table if not exists public.notification_log (
 -- --------------------------------------------------------------------- RLS --
 
 alter table public.profiles            enable row level security;
+alter table public.professional_roles  enable row level security;
 alter table public.care_relationships  enable row level security;
 alter table public.plans               enable row level security;
 alter table public.plan_versions       enable row level security;
@@ -360,6 +387,23 @@ create policy profiles_professional_read on public.profiles
 drop policy if exists profiles_patient_read on public.profiles;
 create policy profiles_patient_read on public.profiles
   for select using (public.es_mi_profesional(id));
+
+-- Cada uno ve sus propios roles. Sin esta policy RLS niega por defecto y la
+-- pestana profesional no aparece para nadie.
+drop policy if exists roles_propios_ver on public.professional_roles;
+create policy roles_propios_ver on public.professional_roles
+  for select using (person_id = auth.uid());
+
+-- Y se declara a si mismo, que es lo que hace hoy la casilla "soy
+-- nutricionista". Declararse sin matricula es lo que hay hasta la epica 3;
+-- esto no lo empeora, solo lo muda de tabla.
+drop policy if exists roles_propios_declarar on public.professional_roles;
+create policy roles_propios_declarar on public.professional_roles
+  for insert with check (person_id = auth.uid());
+
+drop policy if exists roles_propios_borrar on public.professional_roles;
+create policy roles_propios_borrar on public.professional_roles
+  for delete using (person_id = auth.uid());
 
 -- Ambas partes ven el vinculo. Cada una lo corta cuando quiere.
 drop policy if exists care_rel_visible on public.care_relationships;

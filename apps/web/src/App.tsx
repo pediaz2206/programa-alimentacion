@@ -20,7 +20,7 @@ import { Registro } from './pantallas/Registro.tsx';
 import { Ajustes } from './pantallas/Ajustes.tsx';
 import { Bienvenida } from './pantallas/Bienvenida.tsx';
 import { Pacientes } from './pantallas/Pacientes.tsx';
-import { esProfesional as consultarProfesional, registrarPerfil } from './lib/vinculos.ts';
+import { rolesDe, registrarPerfil, type RolProfesional } from './lib/vinculos.ts';
 import { escucharPlan } from './lib/envivo.ts';
 import { useRuta, type Pestana } from './lib/ruta.ts';
 import { hayBackend } from './lib/supabase.ts';
@@ -72,8 +72,10 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [ahora, setAhora] = useState(minutosAhora);
   // Ser profesional es un permiso extra, no un rol excluyente: la nutricionista
-  // tambien puede seguir un plan propio.
-  const [profesional, setProfesional] = useState(false);
+  // tambien puede seguir un plan propio. Y los roles se acumulan, asi que es
+  // una lista y no un booleano.
+  const [roles, setRoles] = useState<RolProfesional[]>([]);
+  const profesional = roles.length > 0;
 
   useEffect(() => {
     document.documentElement.dataset['theme'] = tema === 'oscuro' ? 'dark' : 'light';
@@ -157,7 +159,7 @@ export function App() {
   useEffect(() => {
     if (!sesion) return;
     void registrarPerfil(sesion).catch(() => { /* se reintenta en el próximo ingreso */ });
-    void consultarProfesional(sesion).then(setProfesional).catch(() => setProfesional(false));
+    void rolesDe(sesion).then(setRoles).catch(() => setRoles([]));
   }, [sesion]);
 
   // Lo que publica la nutricionista aparece sin recargar.
@@ -309,8 +311,11 @@ export function App() {
             tema={tema}
             onTema={setTema}
             sesion={sesion}
-            esProfesional={profesional}
-            onEsProfesional={setProfesional}
+            esProfesional={roles.includes('nutricionista')}
+            onEsProfesional={(valor) => setRoles((r) => (
+              valor ? [...new Set([...r, 'nutricionista' as const])]
+                    : r.filter((x) => x !== 'nutricionista')
+            ))}
           />
         )}
       </main>

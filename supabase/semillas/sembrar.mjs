@@ -138,6 +138,14 @@ async function sembrar() {
     es_prueba: true,
   })));
 
+  // Los roles van a su propia tabla. `personajes.mjs` los declara desde
+  // siempre; hasta ahora se perdian, porque la unica marca era el booleano de
+  // arriba y no distinguia nutricionista de entrenador.
+  await subir('professional_roles',
+    PROFESIONALES.flatMap((p) => p.roles.map((rol) => ({ person_id: ids.get(p.slug), rol }))),
+    'person_id,rol');
+  console.log(`  ${PROFESIONALES.flatMap((p) => p.roles).length} roles profesionales`);
+
   console.log('\nPlanes y configuración');
   for (const p of PACIENTES) {
     const id = ids.get(p.slug);
@@ -171,6 +179,7 @@ async function sembrar() {
       patient_id: v.estado === 'pending' ? null : ids.get(v.paciente),
       patient_email: email(v.paciente),
       status: v.estado,
+      rol: v.rol,
       accepted_at: v.estado === 'active' ? new Date().toISOString() : null,
       revoked_at: v.estado === 'revoked' ? new Date().toISOString() : null,
       consent_granted_at: v.consentido ? new Date().toISOString() : null,
@@ -185,7 +194,7 @@ async function sembrar() {
       ? await db.from('care_relationships').update(fila).eq('id', existe[0].id)
       : await db.from('care_relationships').insert(fila);
     if (eV) throw new Error(`care_relationships: ${eV.message}`);
-    console.log(`  ${v.profesional} → ${v.paciente}  [${v.estado}${v.consentido ? '' : ', sin consentir'}]`);
+    console.log(`  ${v.profesional} → ${v.paciente}  [${v.rol}, ${v.estado}${v.consentido ? '' : ', sin consentir'}]`);
   }
 
   console.log('\nHistoria');
@@ -222,8 +231,13 @@ Para deshacer:  node supabase/semillas/sembrar.mjs --borrar
 /**
  * Ata una cuenta real como profesional de los pacientes sembrados.
  *
- * Es la unica forma de mirar la vista profesional con datos: las cuentas de
- * prueba no pueden iniciar sesion. Toca una cuenta real, asi que lo dice.
+ * Cruza a proposito el limite que las policias imponen: una cuenta real y una
+ * de prueba no se vinculan entre si. Acá funciona porque la semilla corre con
+ * `service_role`, que saltea RLS. Es la unica excepcion, y es a mano.
+ *
+ * Desde que existe el acceso por contrasena ya no hace falta para mirar la
+ * vista profesional: se puede entrar como `nutri-1` o `entrenador-1`. Queda
+ * para el caso de querer verla desde la propia cuenta de Google.
  */
 async function sumarProfesionalReal(correo, ids) {
   console.log(`\nCuenta real como profesional: ${correo}`);
@@ -243,7 +257,12 @@ async function sumarProfesionalReal(correo, ids) {
 
   const { error: eP } = await db.from('profiles').update({ is_professional: true }).eq('id', uid);
   if (eP) throw eP;
-  console.log('  marcada como profesional');
+  const { error: eR } = await db.from('professional_roles')
+    .upsert({ person_id: uid, rol: 'nutricionista' }, { onConflict: 'person_id,rol' });
+  if (eR) throw eR;
+  console.log('  marcada como nutricionista');
+  console.log('  ojo: esto vincula una cuenta real con cuentas de prueba, que es');
+  console.log('  justo lo que las politicas impiden. Lo permite service_role.');
 
   for (const p of PACIENTES) {
     const fila = {
@@ -251,6 +270,7 @@ async function sumarProfesionalReal(correo, ids) {
       patient_id: ids.get(p.slug),
       patient_email: email(p.slug),
       status: 'active',
+      rol: 'nutricionista',
       accepted_at: new Date().toISOString(),
       consent_granted_at: new Date().toISOString(),
       consent_version: 'v1',
@@ -266,7 +286,9 @@ async function sumarProfesionalReal(correo, ids) {
   console.log(`
   Entrá con esa cuenta y vas a ver la pestaña Pacientes con los cuatro.
   Al borrar la semilla, los vínculos se van con las cuentas; el permiso de
-  profesional queda: para sacarlo, profiles.is_professional = false.`);
+  profesional queda, porque es una cuenta real y borrarle permisos por las
+  dudas es peor. Para sacarlo: borrar su fila de professional_roles y poner
+  profiles.is_professional = false.`);
 }
 
 /** El plan activo del paciente, creandolo la primera vez. */

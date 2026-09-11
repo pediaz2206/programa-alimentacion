@@ -56,21 +56,47 @@ export async function reclamarInvitaciones(sesion: Session | null): Promise<numb
   return typeof data === 'number' ? data : 0;
 }
 
-export async function esProfesional(sesion: Session | null): Promise<boolean> {
-  if (!supabase || !sesion) return false;
+export type RolProfesional = 'nutricionista' | 'entrenador';
+
+/**
+ * Los roles de quien entra. Vacio para la mayoria: ser profesional es un
+ * permiso extra, no un rol excluyente, y la nutricionista tambien puede seguir
+ * un plan propio.
+ *
+ * Sale de `professional_roles` y ya no de `profiles.is_professional`. Esa
+ * columna sigue existiendo y las policias de `care_relationships` la siguen
+ * exigiendo para invitar: unificar las dos fuentes es la epica 2.
+ */
+export async function rolesDe(sesion: Session | null): Promise<RolProfesional[]> {
+  if (!supabase || !sesion) return [];
   const { data } = await supabase
-    .from('profiles').select('is_professional').eq('id', sesion.user.id).maybeSingle();
-  return Boolean(data?.['is_professional']);
+    .from('professional_roles').select('rol').eq('person_id', sesion.user.id);
+  return (data ?? []).map((f) => f['rol'] as RolProfesional);
 }
 
-/** Se declara profesional. Es un permiso extra, no un rol excluyente. */
+/**
+ * Se declara nutricionista, que es lo que dice la casilla de Ajustes.
+ *
+ * Escribe en las dos tablas mientras convivan: la nueva es la que lee la app,
+ * y la vieja es la que todavia exige `care_rel_invite` para poder invitar. Sin
+ * las dos, declararse no alcanzaria para invitar a nadie.
+ */
 export async function declararseProfesional(sesion: Session | null, valor: boolean): Promise<void> {
   const cliente = db(sesion);
-  const { error } = await cliente.from('profiles').upsert(
-    { id: sesion!.user.id, is_professional: valor },
+  const id = sesion!.user.id;
+
+  const { error } = valor
+    ? await cliente.from('professional_roles')
+        .upsert({ person_id: id, rol: 'nutricionista' }, { onConflict: 'person_id,rol' })
+    : await cliente.from('professional_roles')
+        .delete().eq('person_id', id).eq('rol', 'nutricionista');
+  if (error) throw error;
+
+  const { error: errorViejo } = await cliente.from('profiles').upsert(
+    { id, is_professional: valor },
     { onConflict: 'id' },
   );
-  if (error) throw error;
+  if (errorViejo) throw errorViejo;
 }
 
 /** Los vínculos donde el usuario es el paciente. */

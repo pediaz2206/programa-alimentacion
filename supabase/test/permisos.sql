@@ -262,3 +262,44 @@ set role authenticated;
 select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
 select pruebas.check('una cuenta real no reclama una invitacion de prueba',
   public.reclamar_invitaciones() = 0, true);
+
+-- 12. Roles profesionales: cada uno ve y declara los suyos, y ninguno los de
+--     otro. Sin la policy de select, RLS niega por defecto y la pestana
+--     profesional no aparece para nadie: por eso se prueba que SI se ven.
+set role postgres;
+insert into public.professional_roles (person_id, rol) values
+  ('22222222-2222-2222-2222-222222222222', 'nutricionista'),
+  ('44444444-4444-4444-4444-444444444444', 'entrenador');
+set role authenticated;
+
+select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+select pruebas.check('cada uno ve sus propios roles',
+  exists (select 1 from public.professional_roles where rol = 'nutricionista'), true);
+select pruebas.check('pero no ve los de otro',
+  exists (select 1 from public.professional_roles
+          where person_id = '44444444-4444-4444-4444-444444444444'), false);
+
+-- Declararse a si mismo es lo que hace hoy la casilla "soy nutricionista".
+set role postgres;
+create or replace function pruebas.puede_declarar(persona uuid, r text)
+returns boolean language plpgsql as $$
+begin
+  insert into public.professional_roles (person_id, rol) values (persona, r)
+  on conflict do nothing;
+  return true;
+exception when insufficient_privilege then
+  return false;
+end $$;
+grant execute on function pruebas.puede_declarar(uuid, text) to authenticated;
+set role authenticated;
+
+select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+select pruebas.check('uno se declara un rol propio',
+  pruebas.puede_declarar('22222222-2222-2222-2222-222222222222', 'entrenador'), true);
+select pruebas.check('pero no le declara un rol a otro',
+  pruebas.puede_declarar('11111111-1111-1111-1111-111111111111', 'nutricionista'), false);
+
+-- Un paciente sin ningun rol no ve ninguna fila: es lo que apaga la pestana.
+select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
+select pruebas.check('sin rol declarado no hay ninguna fila que ver',
+  exists (select 1 from public.professional_roles), false);
