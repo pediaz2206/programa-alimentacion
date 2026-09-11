@@ -35,6 +35,26 @@ Antes hace falta haber corrido `supabase/migraciones/005-datos-de-prueba.sql`,
 que agrega la marca `profiles.es_prueba`, y
 `006-aislar-cuentas-de-prueba.sql`, que la hace valer.
 
+## Entrar con esas cuentas
+
+El formulario de email y contraseña se compila solo donde la bandera lo
+enciende:
+
+```bash
+VITE_LOGIN_PRUEBA=on npm run build
+```
+
+En Netlify va como variable de entorno del despliegue de vista previa. En
+producción no se pone, y el formulario no queda ni en la pantalla ni en el
+bundle.
+
+**La bandera no es un control de seguridad.** El `grant_type=password` lo
+atiende la API de Supabase, y producción y vista previa comparten una sola
+base: esas credenciales sirven contra producción aunque ahí no haya
+formulario. Lo que contiene a una cuenta de prueba es el aislamiento de acá
+abajo, no la bandera. La bandera es para que nadie vea en producción una
+puerta que no le corresponde.
+
 ## El aislamiento
 
 Una cuenta de prueba y una real no se pueden vincular, en ninguna de las dos

@@ -1,5 +1,14 @@
 import { useState } from 'react';
 import { entrarConGoogle, hayBackend } from '../lib/supabase.ts';
+import { AccesoDePrueba } from '../componentes/AccesoDePrueba.tsx';
+
+/**
+ * Se compila solo en los despliegues que la encienden, que son los de vista
+ * previa. Vite reemplaza `import.meta.env.VITE_LOGIN_PRUEBA` por un literal,
+ * asi que en produccion esto es `false` y el formulario queda sin referencias
+ * y fuera del bundle.
+ */
+const HAY_ACCESO_DE_PRUEBA = import.meta.env.VITE_LOGIN_PRUEBA === 'on';
 
 /**
  * Puerta de entrada. Sin sesion no se carga nada: el plan, el registro y los
@@ -50,6 +59,7 @@ export function Bienvenida() {
               Tu plan y tu registro son privados. Solo se comparten con tu nutricionista
               si vos lo autorizás, y podés cortar ese acceso cuando quieras.
             </p>
+            {HAY_ACCESO_DE_PRUEBA && <AccesoDePrueba />}
           </>
         ) : (
           <p className="bienvenida-legal">

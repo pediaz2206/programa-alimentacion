@@ -377,6 +377,33 @@ h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0;
 .bienvenida-lista b { color: var(--tinta); font-weight: 600; }
 .bienvenida-legal { font-size: 12px; line-height: 1.5; color: var(--tenue); margin: 0; text-align: center; }
 
+/* Acceso de prueba. Solo se compila en vista previa, y se ve como lo que es:
+   una puerta de servicio, no la principal. Separada por una línea para que
+   nadie la confunda con la forma normal de entrar. */
+.acceso-prueba {
+  display: flex; flex-direction: column; gap: 10px;
+  width: 100%; margin-top: 6px; padding-top: 18px;
+  border-top: 1px solid var(--linea);
+}
+.acceso-prueba-titulo {
+  margin: 0; font-size: 12px; color: var(--tenue); text-align: center;
+}
+.acceso-prueba-campo { display: flex; flex-direction: column; gap: 4px; }
+.acceso-prueba-campo span { font-size: 12px; color: var(--tenue); }
+.acceso-prueba-campo input {
+  /* 16px o iOS hace zoom al enfocar el campo y descuadra la pantalla. */
+  font: inherit; font-size: 16px; color: var(--tinta);
+  background: var(--superficie-2); border: 1px solid var(--linea);
+  border-radius: 8px; padding: 9px 11px; min-height: 44px;
+}
+.acceso-prueba-campo input:focus-visible {
+  outline: 2px solid var(--verde); outline-offset: 1px;
+}
+.acceso-prueba-error {
+  margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ambar);
+  text-align: center;
+}
+
 /* Mientras se resuelve si hay sesión: sin esto, quien ya entró ve un
    parpadeo de la pantalla de login en cada carga. */
 .cargando {
