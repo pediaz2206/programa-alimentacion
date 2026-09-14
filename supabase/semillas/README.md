@@ -33,7 +33,9 @@ Esa cuenta tiene que haber entrado a la app con Google al menos una vez. Queda
 marcada como nutricionista y vinculada a los cuatro pacientes, activa y
 consentida. **Cruza a propósito el límite de más abajo** —una cuenta real con
 cuentas de prueba—: funciona porque la semilla corre con `service_role`, que
-saltea RLS. Es la única excepción y se hace a mano. Al borrar la semilla los vínculos se van con las cuentas; el
+saltea RLS. Es la única excepción y se hace a mano. Ese vínculo **se puede cortar**
+desde la app como cualquier otro: el aislamiento impide crearlo o reforzarlo,
+nunca terminarlo. Al borrar la semilla los vínculos se van con las cuentas; el
 permiso de profesional queda —`profiles.is_professional = false` para sacarlo—,
 porque es una cuenta real y borrarle permisos por las dudas es peor.
 
@@ -49,7 +51,8 @@ apague su propia marca `es_prueba` y salga del aislamiento. Y
 `010-el-detalle-en-su-tabla.sql`, que muda la nota y la foto a
 `meal_logs_detalle` para que el entrenador no las lea. Y
 `011-el-rol-al-invitar.sql`, que exige declarar al invitar un rol que la persona
-tenga.
+tenga. Y `012-revocar-siempre-se-puede.sql`, sin la cual un vínculo
+mixto queda congelado.
 
 ## Entrar con esas cuentas
 

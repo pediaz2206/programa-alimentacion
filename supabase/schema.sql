@@ -533,6 +533,10 @@ create policy care_rel_update on public.care_relationships
   with check (
     (patient_id = auth.uid() or professional_id = auth.uid())
     and (patient_id is null
+         -- Revocar siempre se puede, aunque las dos puntas no coincidan en
+         -- `es_prueba`: el aislamiento impide crear o reforzar un vinculo
+         -- mixto, nunca terminarlo. La fila que resulta no concede nada.
+         or status = 'revoked'
          or public.es_cuenta_de_prueba(professional_id) = public.es_cuenta_de_prueba(patient_id))
   );
 

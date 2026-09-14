@@ -616,3 +616,37 @@ select pruebas.check('y ese vinculo nace sin acceso al detalle',
   (select rol from public.care_relationships
    where professional_id = '66666666-6666-6666-6666-666666666666'
      and patient_email = 'nuevo@ejemplo.com') = 'entrenador', true);
+
+-- 18. Un vinculo mixto —cuenta real con cuenta de prueba— se puede cortar.
+--
+--     Los crea `sembrar.mjs --profesional=` con service_role, que saltea RLS,
+--     para poder mirar la vista profesional desde una cuenta de Google real.
+--     La condicion de aislamiento de la 006 los dejaba congelados: ninguna de
+--     las dos partes podia revocarlos ni consentirlos, porque toda escritura
+--     chocaba con "las dos puntas coinciden en es_prueba".
+set role postgres;
+select set_config('test.uid', '', false);
+insert into public.care_relationships
+  (professional_id, patient_id, patient_email, status, rol, accepted_at, consent_granted_at)
+values ('22222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555555',
+        'pac@prueba.en-punto.local', 'active', 'nutricionista', now(), now());
+set role authenticated;
+
+-- Reforzarlo sigue prohibido: eso es lo que el aislamiento existe para impedir.
+select set_config('test.uid', '55555555-5555-5555-5555-555555555555', false);
+select pruebas.check('un vinculo mixto no se puede re-consentir',
+  pruebas.intentar($$update public.care_relationships
+    set consent_granted_at = now(), consent_version = 'v2'
+    where professional_id = '22222222-2222-2222-2222-222222222222'
+      and patient_id = '55555555-5555-5555-5555-555555555555'$$), false);
+
+-- Pero cortarlo si: la fila que resulta no concede nada.
+select pruebas.check('el paciente SI puede revocar un vinculo mixto',
+  pruebas.intentar($$update public.care_relationships
+    set status = 'revoked', revoked_at = now()
+    where professional_id = '22222222-2222-2222-2222-222222222222'
+      and patient_id = '55555555-5555-5555-5555-555555555555'$$), true);
+select pruebas.check('y el acceso se cortó de verdad',
+  (select status from public.care_relationships
+   where professional_id = '22222222-2222-2222-2222-222222222222'
+     and patient_id = '55555555-5555-5555-5555-555555555555') = 'revoked', true);
