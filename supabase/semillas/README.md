@@ -45,7 +45,9 @@ que agrega la marca `profiles.es_prueba`;
 columna de un vínculo puede tocar cada parte: sin ella, el profesional se
 concede el consentimiento solo y el entrenador se asciende a nutricionista. Y
 `009-la-marca-de-prueba-no-se-toca.sql`, que impide que una cuenta sembrada se
-apague su propia marca `es_prueba` y salga del aislamiento.
+apague su propia marca `es_prueba` y salga del aislamiento. Y
+`010-el-detalle-en-su-tabla.sql`, que muda la nota y la foto a
+`meal_logs_detalle` para que el entrenador no las lea.
 
 ## Entrar con esas cuentas
 
