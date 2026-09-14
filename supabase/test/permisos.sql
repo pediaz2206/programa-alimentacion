@@ -18,8 +18,15 @@ insert into public.plans (id, patient_id, author_id, name) values
    '11111111-1111-1111-1111-111111111111',
    '22222222-2222-2222-2222-222222222222', 'Plan');
 
-insert into public.meal_logs (patient_id, local_date, slot_id, protein_grams) values
-  ('11111111-1111-1111-1111-111111111111', current_date, 'almuerzo', 40);
+insert into public.meal_logs (id, patient_id, local_date, slot_id, protein_grams) values
+  ('dddddddd-0000-0000-0000-000000000001',
+   '11111111-1111-1111-1111-111111111111', current_date, 'almuerzo', 40);
+
+-- El detalle de esa comida: lo que la persona escribio y la foto que saco. Es
+-- lo que FR-21 le niega al entrenador.
+insert into public.meal_logs_detalle (meal_log_id, nota, foto_path) values
+  ('dddddddd-0000-0000-0000-000000000001', 'me senti pesado despues',
+   '11111111-1111-1111-1111-111111111111/almuerzo.jpg');
 
 insert into storage.objects (bucket_id, name) values
   ('meal-photos', '11111111-1111-1111-1111-111111111111/almuerzo.jpg');
@@ -366,29 +373,43 @@ set role authenticated;
 select set_config('test.uid', '66666666-6666-6666-6666-666666666666', false);
 select pruebas.check('el entrenador tiene acceso de cuidado',
   public.has_care_access('11111111-1111-1111-1111-111111111111'), true);
-select pruebas.check('y ve el registro por la vista sin detalle',
-  exists (select 1 from public.registro_sin_detalle
+select pruebas.check('y ve el registro: adherencia, proteina y constancia',
+  exists (select 1 from public.meal_logs
           where patient_id = '11111111-1111-1111-1111-111111111111'), true);
 select pruebas.check('pero NO ve las fotos, aunque el vinculo este consentido',
   exists (select 1 from storage.objects where bucket_id = 'meal-photos'), false);
 select pruebas.check('ve_fotos le dice que no',
   public.ve_fotos('11111111-1111-1111-1111-111111111111'), false);
 
--- La vista no tiene las columnas del detalle: no es que las filtre, no
--- existen. Un `select note` contra ella es un error de columna inexistente.
-select pruebas.check('la vista sin detalle no expone la nota',
+-- Lo que importa: la nota y la foto no estan en `meal_logs`. Antes la unica
+-- barrera era que el cliente pidiera otras columnas, y eso no es una barrera.
+select pruebas.check('meal_logs ya no tiene la nota',
   exists (select 1 from information_schema.columns
-          where table_name = 'registro_sin_detalle' and column_name = 'note'), false);
+          where table_name = 'meal_logs' and column_name = 'note'), false);
 select pruebas.check('ni la ruta de la foto',
   exists (select 1 from information_schema.columns
-          where table_name = 'registro_sin_detalle' and column_name = 'photo_path'), false);
+          where table_name = 'meal_logs' and column_name = 'photo_path'), false);
 
--- Y sigue respetando el vinculo: sin acceso, la vista no devuelve nada. Una
--- vista sin security_invoker filtraria todo el registro de todos.
+-- Y el detalle, que ahora es una tabla con su propia policy, no se lo da.
+select pruebas.check('el entrenador NO lee el detalle',
+  exists (select 1 from public.meal_logs_detalle), false);
+
+-- El resumen diario le cuenta las comidas pero no cuantas tienen foto: el
+-- join a `meal_logs_detalle` lo filtra la policy, no la consulta.
+select pruebas.check('el resumen diario le da comidas',
+  (select comidas_registradas from public.resumen_diario
+   where patient_id = '11111111-1111-1111-1111-111111111111') > 0, true);
+select pruebas.check('pero con_foto en cero',
+  (select con_foto from public.resumen_diario
+   where patient_id = '11111111-1111-1111-1111-111111111111') = 0, true);
+
+-- Un profesional ajeno sigue sin ver nada de nada.
 select set_config('test.uid', '33333333-3333-3333-3333-333333333333', false);
-select pruebas.check('un profesional ajeno no ve nada por la vista sin detalle',
-  exists (select 1 from public.registro_sin_detalle
+select pruebas.check('un profesional ajeno no ve el registro',
+  exists (select 1 from public.meal_logs
           where patient_id = '11111111-1111-1111-1111-111111111111'), false);
+select pruebas.check('ni el detalle',
+  exists (select 1 from public.meal_logs_detalle), false);
 
 -- Si ese mismo vinculo se hubiera creado como nutricionista, las fotos si.
 --
@@ -404,6 +425,8 @@ set role authenticated;
 select set_config('test.uid', '66666666-6666-6666-6666-666666666666', false);
 select pruebas.check('con un vinculo de nutricionista, las mismas fotos si',
   public.ve_fotos('11111111-1111-1111-1111-111111111111'), true);
+select pruebas.check('y el detalle tambien',
+  exists (select 1 from public.meal_logs_detalle), true);
 
 -- 14. Quien escribe que columna de un vinculo.
 --
@@ -539,3 +562,19 @@ select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
 select pruebas.check('una cuenta real no se marca como de prueba',
   pruebas.intentar($$update public.profiles set es_prueba = true
     where id = '11111111-1111-1111-1111-111111111111'$$), false);
+
+-- 16. Ninguna tabla de `public` sin RLS.
+--
+--     Esta asercion existe porque `meal_logs_detalle` nacio sin RLS: la linea
+--     de `enable row level security` no entro, la tabla quedo abierta a
+--     cualquier usuario autenticado, y lo unico que lo delato fue otra
+--     asercion que esperaba una negacion. Sin esa, una tabla nueva con datos
+--     de salud pasaba la corrida entera en verde.
+--
+--     No verifica que las policies sean correctas —eso es el resto del
+--     archivo— sino que exista la puerta.
+set role postgres;
+select pruebas.check('toda tabla de public tiene RLS activa',
+  exists (select 1 from pg_tables t
+          where t.schemaname = 'public' and not t.rowsecurity), false);
+set role authenticated;

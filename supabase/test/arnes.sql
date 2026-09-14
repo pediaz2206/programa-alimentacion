@@ -3,8 +3,11 @@
 create schema auth;
 create schema storage;
 create extension if not exists pgcrypto;
-create role authenticated;
-create role anon;
+-- Los roles son del cluster, no de la base: crearlos dos veces en el mismo
+-- Postgres aborta. Importa cuando se levantan dos bases para compararlas
+-- (ver `deriva.sh`).
+do $$ begin create role authenticated; exception when duplicate_object then null; end $$;
+do $$ begin create role anon;          exception when duplicate_object then null; end $$;
 
 create table auth.users (id uuid primary key, email text);
 

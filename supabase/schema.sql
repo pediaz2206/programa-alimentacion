@@ -342,8 +342,10 @@ create table if not exists public.meal_logs (
   portions         jsonb,
   protein_grams    numeric,
   is_free_meal     boolean not null default false,
-  note             text,
-  photo_path       text,
+  -- La nota y la foto NO viven aca: son el detalle plato por plato, y FR-21 se
+  -- lo niega al entrenador. Como RLS decide por fila y no por columna, la
+  -- unica forma de negarlas de verdad es que esten en otra tabla, con su
+  -- propia policy. Ver `meal_logs_detalle`.
   logged_at        timestamptz not null default now(),
   unique (patient_id, local_date, slot_id)
 );
@@ -351,6 +353,25 @@ create index if not exists meal_logs_patient_date_idx
   on public.meal_logs (patient_id, local_date desc);
 create index if not exists meal_logs_free_idx
   on public.meal_logs (patient_id, local_date desc) where is_free_meal;
+
+-- El detalle de una comida: que escribio la persona y que foto saco.
+--
+-- Existe como tabla aparte y no como dos columnas de `meal_logs` por una razon
+-- de permisos, no de modelado: RLS concede o niega FILAS, nunca columnas. Con
+-- `note` y `photo_path` adentro de `meal_logs`, cualquier profesional con
+-- acceso de cuidado las leia con un `select`, sin importar su rol, y la unica
+-- barrera posible era que el cliente no las pidiera. Eso no es una barrera.
+--
+-- Separadas, la pregunta "quien lee el detalle" es una policy sobre esta
+-- tabla, y la contesta el servidor.
+create table if not exists public.meal_logs_detalle (
+  meal_log_id uuid primary key references public.meal_logs (id) on delete cascade,
+  -- Lo que la persona escribio: "me senti mal despues", "comi afuera".
+  nota        text,
+  -- La ruta en el bucket privado, no una URL: las URLs se firman al leer y
+  -- vencen. Espeja lo que decide `meal_photos_professional_read`.
+  foto_path   text
+);
 
 -- ---------------------------------------------------------- notificaciones --
 
@@ -408,6 +429,7 @@ alter table public.plans               enable row level security;
 alter table public.plan_versions       enable row level security;
 alter table public.configs             enable row level security;
 alter table public.meal_logs           enable row level security;
+alter table public.meal_logs_detalle   enable row level security;
 alter table public.body_measurements   enable row level security;
 alter table public.push_subscriptions  enable row level security;
 alter table public.notification_log    enable row level security;
@@ -646,9 +668,31 @@ drop policy if exists meal_logs_patient on public.meal_logs;
 create policy meal_logs_patient on public.meal_logs
   for all using (patient_id = auth.uid()) with check (patient_id = auth.uid());
 
+-- `meal_logs` ya no tiene detalle, asi que cualquier profesional vinculado y
+-- consentido puede leerlo entero: es adherencia, proteina y constancia.
 drop policy if exists meal_logs_professional_read on public.meal_logs;
 create policy meal_logs_professional_read on public.meal_logs
   for select using (public.has_care_access(patient_id));
+
+-- El detalle es del paciente y de quien puede prescribirle. Se llega a el por
+-- `meal_log_id`, asi que las dos policies preguntan por la comida de la que
+-- cuelga.
+drop policy if exists meal_detalle_patient on public.meal_logs_detalle;
+create policy meal_detalle_patient on public.meal_logs_detalle
+  for all
+  using (exists (select 1 from public.meal_logs l
+                 where l.id = meal_log_id and l.patient_id = auth.uid()))
+  with check (exists (select 1 from public.meal_logs l
+                      where l.id = meal_log_id and l.patient_id = auth.uid()));
+
+-- Y solo lee quien tiene el vinculo de nutricionista. Es la misma condicion
+-- que gobierna las fotos en storage: el detalle y la foto son lo mismo visto
+-- de dos lados, y si se separaran diria uno una cosa y la otra otra.
+drop policy if exists meal_detalle_professional_read on public.meal_logs_detalle;
+create policy meal_detalle_professional_read on public.meal_logs_detalle
+  for select
+  using (exists (select 1 from public.meal_logs l
+                 where l.id = meal_log_id and public.ve_fotos(l.patient_id)));
 
 drop policy if exists body_measurements_patient on public.body_measurements;
 create policy body_measurements_patient on public.body_measurements
@@ -706,8 +750,14 @@ select
   count(*)                                          as comidas_registradas,
   count(*) filter (where l.is_free_meal)            as comidas_libres,
   coalesce(sum(l.protein_grams), 0)                 as proteina_g,
-  count(*) filter (where l.photo_path is not null)  as con_foto
+  -- Cuantas tienen foto, no cuales: el conteo no es detalle. El join va por la
+  -- izquierda para que un dia sin detalle siga contando sus comidas, y
+  -- `security_invoker` hace que la policy de `meal_logs_detalle` decida si esas
+  -- filas se ven: al entrenador le da cero, que es lo correcto.
+  count(d.meal_log_id)                              as con_foto
 from public.meal_logs l
+left join public.meal_logs_detalle d
+  on d.meal_log_id = l.id and d.foto_path is not null
 group by l.patient_id, l.local_date;
 
 -- Las comidas del 20% se presupuestan por semana, asi que la pregunta
@@ -724,30 +774,9 @@ select
 from public.meal_logs l
 group by l.patient_id, date_trunc('week', l.local_date);
 
--- Lo que un profesional puede leer del registro sin ver el detalle plato por
--- plato: fecha, comida, porciones y proteina. Sin `note` y sin `photo_path`.
---
--- Es una proyeccion de columnas y no de filas porque RLS no restringe
--- columnas: se puede negar una fila entera, no un campo. Esconder esos dos en
--- el cliente dejaria los datos a un `curl` de distancia.
---
--- Devuelve filas y no agregados a proposito: el calculo de adherencia,
--- constancia y proteina vive en `packages/core`, que es lo que mantiene la
--- pantalla y la notificacion diciendo lo mismo.
---
--- `security_invoker` hace que el RLS de meal_logs siga mandando sobre que
--- filas salen; esta vista solo decide que columnas.
-create or replace view public.registro_sin_detalle
-with (security_invoker = true) as
-select
-  l.patient_id,
-  l.local_date,
-  l.slot_id,
-  l.option_id,
-  l.portions,
-  l.protein_grams,
-  l.is_free_meal
-from public.meal_logs l;
+-- `registro_sin_detalle` se fue: existia para tapar dos columnas que ahora no
+-- estan en la tabla. `meal_logs` ya es el registro sin detalle.
+drop view if exists public.registro_sin_detalle;
 
 -- ----------------------------------------------------------------- fotos --
 

@@ -71,42 +71,32 @@ export async function misPacientes(sesion: Session | null): Promise<Paciente[]> 
     .not('patient_id', 'is', null);
   if (error) throw error;
 
-  // El rol es por vinculo: la misma persona puede seguir a alguien como
-  // nutricionista y a otro como entrenador. Si hay dos vinculos con la misma
-  // persona, manda nutricionista.
+  // El rol es por vinculo: la misma persona sigue a alguien como nutricionista
+  // y a otro como entrenador. Sobre el MISMO paciente no puede tener los dos:
+  // el indice `care_rel_unico_paciente` prohibe dos vinculos entre las mismas
+  // dos personas, asi que aca hay a lo sumo uno por paciente y no hay nada que
+  // resolver entre roles. Nulo cuenta como entrenador, que es el default
+  // seguro; despues de 007 no deberia quedar ninguno.
   const rolPorPaciente = new Map<string, RolDelVinculo>();
   for (const v of vinculos ?? []) {
-    const uid = v['patient_id'] as string;
-    if (v['rol'] === 'nutricionista' || rolPorPaciente.get(uid) === 'nutricionista') {
-      rolPorPaciente.set(uid, 'nutricionista');
-    } else {
-      rolPorPaciente.set(uid, 'entrenador');
-    }
+    rolPorPaciente.set(v['patient_id'] as string,
+      v['rol'] === 'nutricionista' ? 'nutricionista' : 'entrenador');
   }
 
   const ids = [...rolPorPaciente.keys()];
   if (ids.length === 0) return [];
-  const comoNutri = ids.filter((id) => rolPorPaciente.get(id) === 'nutricionista');
-  const comoEntrenador = ids.filter((id) => rolPorPaciente.get(id) !== 'nutricionista');
 
   const desde = ultimosDias(fechaISO(), DIAS_VENTANA)[0]!;
   // Dos consultas para todos, no dos por paciente: una lista de veinte
   // pacientes no puede disparar cuarenta viajes al servidor.
-  const [{ data: logs }, { data: logsSinDetalle }, { data: planes }, { data: configs }, { data: medidas }] = await Promise.all([
-    // Como nutricionista, el registro entero. Como entrenador, una vista que
-    // no tiene las columnas del detalle: no las filtra, no existen. La
-    // restriccion es de columnas y RLS solo sabe de filas, asi que esconderlas
-    // en el cliente las dejaria a un `curl` de distancia.
-    comoNutri.length
-      ? supabase.from('meal_logs')
-          .select('patient_id, local_date, slot_id, option_id, portions, protein_grams, is_free_meal, note, photo_path')
-          .in('patient_id', comoNutri).gte('local_date', desde)
-      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
-    comoEntrenador.length
-      ? supabase.from('registro_sin_detalle')
-          .select('patient_id, local_date, slot_id, option_id, portions, protein_grams, is_free_meal')
-          .in('patient_id', comoEntrenador).gte('local_date', desde)
-      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+  // Una sola consulta para todos: `meal_logs` ya no tiene detalle, asi que no
+  // hay nada que decidir desde el cliente. El detalle viene embebido y la
+  // policy de `meal_logs_detalle` decide si llega: al entrenador le llega
+  // vacio, y eso lo resuelve el servidor, no esta consulta.
+  const [{ data: logs }, { data: planes }, { data: configs }, { data: medidas }] = await Promise.all([
+    supabase.from('meal_logs')
+      .select('patient_id, local_date, slot_id, option_id, portions, protein_grams, is_free_meal, meal_logs_detalle(nota, foto_path)')
+      .in('patient_id', ids).gte('local_date', desde),
     supabase.from('plans')
       .select('patient_id, plan_versions(version, doc)')
       .in('patient_id', ids).eq('is_active', true),
@@ -127,11 +117,7 @@ export async function misPacientes(sesion: Session | null): Promise<Paciente[]> 
   for (const c of configs ?? []) configPorPaciente.set(c['patient_id'] as string, c['doc'] as UserConfig);
 
   const logsPorPaciente = new Map<string, ComidaDeConsulta[]>();
-  // El tipo de las dos listas no coincide, y esa es la idea: las filas de la
-  // vista no tienen `note` ni `photo_path`. Se unifica a un mapa suelto y las
-  // dos columnas quedan en null para el entrenador, que es lo que son.
-  const todos: Record<string, unknown>[] = [...(logs ?? []), ...(logsSinDetalle ?? [])];
-  for (const l of todos) {
+  for (const l of (logs ?? []) as unknown as Record<string, unknown>[]) {
     const uid = l['patient_id'] as string;
     const lista = logsPorPaciente.get(uid) ?? [];
     lista.push({
@@ -141,10 +127,12 @@ export async function misPacientes(sesion: Session | null): Promise<Paciente[]> 
       porciones: (l['portions'] as Record<string, string | null> | null) ?? null,
       proteinGrams: l['protein_grams'] as number | null,
       esLibre: Boolean(l['is_free_meal']),
-      nota: (l['note'] as string | null) ?? null,
+      // Vacio para el entrenador, y no porque esta consulta lo filtre: la
+      // policy de `meal_logs_detalle` no le devuelve la fila.
+      nota: detalleDe(l).nota,
       // La ruta, no una URL firmada: firmar cien fotos que quiza nadie abra
       // es caro. Se firma al desplegar el dia.
-      foto: (l['photo_path'] as string | null) ?? null,
+      foto: detalleDe(l).foto,
     });
     logsPorPaciente.set(uid, lista);
   }
@@ -281,6 +269,14 @@ export async function publicarVersion(
     change_note: nota || null,
   });
   if (error) throw error;
+}
+
+/** El detalle embebido: objeto o arreglo de uno segun infiera PostgREST. */
+function detalleDe(fila: Record<string, unknown>): { nota: string | null; foto: string | null } {
+  const bruto = fila['meal_logs_detalle'];
+  const d = (Array.isArray(bruto) ? bruto[0] : bruto) as
+    { nota?: string | null; foto_path?: string | null } | null | undefined;
+  return { nota: d?.nota ?? null, foto: d?.foto_path ?? null };
 }
 
 function esPruebaDe(perfil: unknown): boolean {

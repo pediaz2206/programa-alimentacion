@@ -31,6 +31,10 @@ roles en `docs/`.
 - `npm run check` corre typecheck y los tests de `packages/core`. No incluye
   `npm run test:db`, las aserciones de RLS (la corrida imprime cuántas) sobre un Postgres efímero:
   corrélo aparte cuando toques `supabase/`.
+- `npm run test:deriva` levanta dos bases —una con `schema.sql`, otra con el schema
+  base más las migraciones— y compara el inventario de objetos. Es lo que detecta que
+  algo se escribió en un archivo y no en el otro; sin eso, una función que solo existe
+  en `schema.sql` pasa las aserciones en verde y no existe en producción.
 - No hay CI. Nada corre solo: lo que no se verifique acá llega a producción.
 
 ## Conventions that differ from defaults

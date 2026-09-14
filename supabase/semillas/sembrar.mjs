@@ -284,8 +284,21 @@ async function sembrar() {
       await subir('meal_logs', comidas.map((c) => ({
         patient_id: id, local_date: c.fecha, slot_id: c.slotId,
         option_id: c.optionId, portions: c.porciones,
-        protein_grams: c.proteinGrams, is_free_meal: c.esLibre, note: c.nota,
+        protein_grams: c.proteinGrams, is_free_meal: c.esLibre,
       })), 'patient_id,local_date,slot_id');
+
+      // La nota va a su propia tabla: es el detalle que el entrenador no ve.
+      // Hay que releer los ids porque el upsert de arriba no los devuelve.
+      const conNota = comidas.filter((c) => c.nota);
+      if (conNota.length > 0) {
+        const { data: filas } = await db.from('meal_logs')
+          .select('id, local_date, slot_id').eq('patient_id', id)
+          .in('local_date', conNota.map((c) => c.fecha));
+        const porClave = new Map((filas ?? []).map((f) => [`${f.local_date}|${f.slot_id}`, f.id]));
+        await subir('meal_logs_detalle', conNota
+          .map((c) => ({ meal_log_id: porClave.get(`${c.fecha}|${c.slotId}`), nota: c.nota }))
+          .filter((d) => d.meal_log_id), 'meal_log_id');
+      }
     }
     if (medidas.length > 0) {
       await subir('body_measurements', medidas.map((m) => ({

@@ -27,8 +27,16 @@ proteína contra objetivo, peso y cintura.
 > entrenador es si el trabajo está produciendo un cambio, y para eso no hace
 > falta saber qué comió el martes.
 >
-> Lo aplica el servidor: la vista `registro_sin_detalle` no tiene esas
-> columnas, y `ve_fotos()` exige que el vínculo declare `nutricionista`.
+> **Corregido el 2026-09-14.** Esto decía que lo aplicaba una vista
+> `registro_sin_detalle` sin esas columnas. No era cierto: la vista solo
+> restringía lo que el cliente pedía, y `meal_logs_professional_read` seguía
+> concediendo la tabla base entera por `has_care_access()`, que no mira el rol.
+> Un `select note, photo_path from meal_logs` como entrenador devolvía todo.
+>
+> Ahora la nota y la foto viven en `meal_logs_detalle`, una tabla aparte con su
+> propia policy que exige el vínculo de `nutricionista`. RLS niega filas y no
+> columnas: mientras estuvieran en `meal_logs`, ninguna policy podía separarlas
+> del resto.
 
 Sobre el plan **puede dejar una propuesta**, no un cambio. La propuesta llega a
 la nutricionista, que la aprueba o la descarta. Si la aprueba, se publica una

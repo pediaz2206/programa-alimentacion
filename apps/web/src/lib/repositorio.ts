@@ -166,7 +166,7 @@ export async function listarRegistros(sesion: Session | null): Promise<Registro[
   try {
     const { data, error } = await supabase!
       .from('meal_logs')
-      .select('local_date, slot_id, option_id, portions, protein_grams, is_free_meal, note, photo_path')
+      .select('local_date, slot_id, option_id, portions, protein_grams, is_free_meal, meal_logs_detalle(nota, foto_path)')
       .eq('patient_id', user.id)
       .order('local_date', { ascending: false })
       .limit(120);
@@ -179,8 +179,8 @@ export async function listarRegistros(sesion: Session | null): Promise<Registro[
       proteinGrams: (r.protein_grams as number | null) ?? null,
       esLibre: Boolean(r.is_free_meal),
       ...(r.portions ? { porciones: r.portions as Record<string, string | null> } : {}),
-      ...(r.note ? { nota: r.note as string } : {}),
-      ...(r.photo_path ? { foto: await urlFirmada(r.photo_path as string) } : {}),
+      ...(detalleDe(r).nota ? { nota: detalleDe(r).nota! } : {}),
+      ...(detalleDe(r).foto ? { foto: await urlFirmada(detalleDe(r).foto!) } : {}),
     })));
     cache.guardarRegistros(user.id, registros);
     return conPendientes(user.id, registros);
@@ -227,6 +227,20 @@ export async function guardarRegistro(
   }
 }
 
+/**
+ * El detalle que vino embebido en la consulta de `meal_logs`.
+ *
+ * PostgREST devuelve la relacion como objeto o como arreglo de uno segun como
+ * infiera la cardinalidad, asi que se normaliza. Vacio es lo normal: una
+ * comida sin nota ni foto no tiene fila de detalle.
+ */
+function detalleDe(fila: Record<string, unknown>): { nota: string | null; foto: string | null } {
+  const bruto = fila['meal_logs_detalle'];
+  const d = (Array.isArray(bruto) ? bruto[0] : bruto) as
+    { nota?: string | null; foto_path?: string | null } | null | undefined;
+  return { nota: d?.nota ?? null, foto: d?.foto_path ?? null };
+}
+
 async function escribirRegistro(uid: string, registro: Registro, planVersionId: string | null) {
   let photoPath: string | null = null;
   if (registro.foto?.startsWith('data:')) {
@@ -238,7 +252,11 @@ async function escribirRegistro(uid: string, registro: Registro, planVersionId: 
     if (error) throw error;
   }
 
-  const { error } = await supabase!.from('meal_logs').upsert({
+  // La comida y su detalle son dos escrituras porque son dos tablas, y son dos
+  // tablas porque RLS niega filas y no columnas: la nota y la foto son lo que
+  // FR-21 le niega al entrenador. `select('id')` devuelve el id de la fila
+  // recién escrita, que es la clave del detalle.
+  const { data, error } = await supabase!.from('meal_logs').upsert({
     patient_id: uid,
     plan_version_id: planVersionId,
     local_date: registro.fecha,
@@ -247,10 +265,27 @@ async function escribirRegistro(uid: string, registro: Registro, planVersionId: 
     portions: registro.porciones ?? null,
     protein_grams: registro.proteinGrams,
     is_free_meal: registro.esLibre,
-    note: registro.nota ?? null,
-    ...(photoPath ? { photo_path: photoPath } : {}),
-  }, { onConflict: 'patient_id,local_date,slot_id' });
+  }, { onConflict: 'patient_id,local_date,slot_id' }).select('id').single();
   if (error) throw error;
+
+  const nota = registro.nota ?? null;
+  if (nota == null && photoPath == null) {
+    // Editar una comida sacandole la nota tiene que borrar el detalle, no
+    // dejarlo con el texto viejo.
+    const { error: e } = await supabase!.from('meal_logs_detalle')
+      .delete().eq('meal_log_id', data.id);
+    if (e) throw e;
+    return;
+  }
+
+  const { error: eDetalle } = await supabase!.from('meal_logs_detalle').upsert({
+    meal_log_id: data.id,
+    nota,
+    // Sin foto nueva se conserva la que hubiera: `photoPath` solo trae valor
+    // cuando la persona acaba de sacar una.
+    ...(photoPath ? { foto_path: photoPath } : {}),
+  }, { onConflict: 'meal_log_id' });
+  if (eDetalle) throw eDetalle;
 }
 
 export async function borrarRegistro(

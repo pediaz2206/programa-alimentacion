@@ -14,6 +14,7 @@
     "check": "npm run typecheck && npm test",
     "vista": "node scripts/check-node.mjs && node --experimental-strip-types scripts/build-vista.ts",
     "test:db": "bash supabase/test/correr.sh",
+    "test:deriva": "bash supabase/test/deriva.sh",
     "dev": "npm run dev --workspace @pa/web",
     "build": "npm run build --workspace @pa/web",
     "verificar": "node scripts/verificar-supabase.mjs",
