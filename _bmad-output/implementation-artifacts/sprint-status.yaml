@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-11-2026 14:00
-last_updated: 09-11-2026 14:00
+last_updated: 09-14-2026 15:32
 project: programa-alimentacion
 project_key: NOKEY
 tracking_system: file-system
@@ -42,7 +42,7 @@ development_status:
   1-4-el-rol-de-entrenador-existe-como-fila-y-abre-la-pestaña: done
   1-5-la-ficha-del-entrenador-contesta-si-el-trabajo-rinde: done
   1-6-la-pantalla-dice-qué-es-real-y-qué-falta: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   # Las épicas 2 a 8 están planificadas en epics.md —objetivo, FR y notas de
   # arquitectura— pero todavía no tienen historias. Van acá para que el archivo
@@ -55,3 +55,68 @@ development_status:
   epic-6: backlog
   epic-7: backlog
   epic-8: backlog
+action_items:
+  - id: "epic-1-retro-item-1-correr-las-migraciones-008-a-012-sobre-l"
+    epic: 1
+    action: "Correr las migraciones 008 a 012 sobre la base y resembrar. Sin eso nada
+      de lo arreglado existe en produccion; el orden importa."
+    owner: "Pablo"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-09-11-2026.md"
+  - id: "epic-1-retro-item-2-ejecutar-la-epica-1-punta-a-punta-contra"
+    epic: 1
+    action: "Ejecutar la epica 1 punta a punta contra un Supabase real e inaugurar
+      la forma de hacerlo. Es el hueco de verificacion que produjo L-7."
+    owner: "Pablo"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-09-11-2026.md"
+  - id: "epic-1-retro-item-3-corregir-el-criterio-de-aceptacion-de-la"
+    epic: 1
+    action: "Corregir el criterio de aceptacion de la 1.5: el caso de los dos roles
+      sobre el mismo paciente no es representable."
+    owner: "planificacion"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-09-11-2026.md"
+  - id: "epic-1-retro-item-4-corregir-el-criterio-de-aceptacion-de-la"
+    epic: 1
+    action: "Corregir el criterio de aceptacion de la 1.6: el filtro de consentimiento
+      es de UX, no de NFR-1."
+    owner: "planificacion"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-09-11-2026.md"
+  - id: "epic-1-retro-item-5-decidir-el-criterio-de-mediciones-de-la"
+    epic: 1
+    action: "Decidir el criterio de mediciones de la 1.6: construir el bloque en la
+      epica 6 o corregir el criterio."
+    owner: "planificacion"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-09-11-2026.md"
+  - id: "epic-1-retro-item-6-reconciliar-ad-5-con-ve_fotos-la-espina"
+    epic: 1
+    action: "Reconciliar AD-5 con ve_fotos(): la espina dice dos puertas de lectura
+      y el codigo tiene tres."
+    owner: "planificacion"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-09-11-2026.md"
+  - id: "epic-1-retro-item-7-partir-pacientes-tsx-antes-de-la-epica-6"
+    epic: 1
+    action: "Partir Pacientes.tsx antes de la epica 6: 569 lineas y 11 componentes,
+      y las epicas 6 y 7 le suman mas."
+    owner: "desarrollo"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-09-11-2026.md"
+  - id: "epic-1-retro-item-8-los-cuatro-restos-menores-contrasenas-pe"
+    epic: 1
+    action: "Los cuatro restos menores: contrasenas perdidas ante un fallo tardio,
+      aviso de siembra vencida que se calla a los 28 dias, rolesDe que descarta el
+      error, entrarConContrasena que aplasta el rate limit."
+    owner: "desarrollo"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-09-11-2026.md"
+  - id: "epic-1-retro-item-9-confirmar-con-silvestre-el-supuesto-de-f"
+    epic: 1
+    action: "Confirmar con Silvestre el supuesto de FR-21: si quiere ver los desvios.
+      Ya no es un supuesto, es una politica de base de datos."
+    owner: "Pablo"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-09-11-2026.md"
