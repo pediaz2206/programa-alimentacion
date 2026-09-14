@@ -5,7 +5,7 @@ import {
   consultaDe, metricasDe, misPacientes, planesParaCopiar, publicarVersion,
   type Metricas, type Paciente, type RolDelVinculo,
 } from '../lib/profesional.ts';
-import { invitarPaciente } from '../lib/vinculos.ts';
+import { invitarPaciente, type RolProfesional } from '../lib/vinculos.ts';
 import { Seccion } from '../componentes/Seccion.tsx';
 import { Aviso } from '../componentes/Aviso.tsx';
 import { Encabezado } from '../componentes/Encabezado.tsx';
@@ -14,8 +14,10 @@ import { Consulta } from '../componentes/Consulta.tsx';
 import { AlPie } from '../componentes/AlPie.tsx';
 import { fechaISO } from '../lib/registro.ts';
 
-export function Pacientes({ sesion, pacienteAbierto, onAbrir }: {
+export function Pacientes({ sesion, roles, pacienteAbierto, onAbrir }: {
   sesion: Session | null;
+  /** Los roles declarados de quien mira: deciden con cuál puede invitar. */
+  roles: RolProfesional[];
   pacienteAbierto: string | undefined;
   onAbrir: (id: string | null) => void;
 }) {
@@ -76,7 +78,7 @@ export function Pacientes({ sesion, pacienteAbierto, onAbrir }: {
         ))
       )}
 
-      <Invitar sesion={sesion} onInvitado={() => void recargar()} />
+      <Invitar sesion={sesion} roles={roles} onInvitado={() => void recargar()} />
     </>
   );
 }
@@ -522,16 +524,40 @@ function SubirPlan({ paciente, sesion }: { paciente: Paciente; sesion: Session |
   );
 }
 
-function Invitar({ sesion, onInvitado }: { sesion: Session | null; onInvitado: () => void }) {
+function Invitar({ sesion, roles, onInvitado }: {
+  sesion: Session | null; roles: RolProfesional[]; onInvitado: () => void;
+}) {
   const [email, setEmail] = useState('');
   const [estado, setEstado] = useState<'listo' | 'enviando' | 'enviado'>('listo');
   const [error, setError] = useState<string | null>(null);
+  // Con un solo rol no hay nada que preguntar. Con los dos hay que elegir, y
+  // no se puede corregir después: el rol del vínculo es inmutable.
+  const [rol, setRol] = useState<RolProfesional>(roles[0] ?? 'nutricionista');
 
   return (
     <Seccion titulo="Invitar a alguien" resumen="Por email">
       <p className="nota">
         Le va a aparecer una invitación cuando entre. Vas a ver su seguimiento solo si la acepta.
       </p>
+
+      {roles.length > 1 && (
+        <div className="campo">
+          <label htmlFor="inv-rol">
+            La seguís como
+            <span className="nota" style={{ display: 'block' }}>
+              Decide qué ves de esa persona, y no se puede cambiar después.
+            </span>
+          </label>
+          <select id="inv-rol" value={rol} style={{ maxWidth: 200 }}
+                  onChange={(e) => setRol(e.target.value as RolProfesional)}>
+            {roles.map((r) => (
+              <option key={r} value={r}>
+                {r === 'nutricionista' ? 'Nutricionista' : 'Entrenador'}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="campo">
         <label htmlFor="inv">Email</label>
         <input id="inv" type="email" value={email} placeholder="persona@mail.com"
@@ -544,7 +570,7 @@ function Invitar({ sesion, onInvitado }: { sesion: Session | null; onInvitado: (
               onClick={() => {
                 setEstado('enviando');
                 setError(null);
-                invitarPaciente(sesion, email)
+                invitarPaciente(sesion, email, rol)
                   .then(() => { setEstado('enviado'); setEmail(''); onInvitado(); })
                   .catch((e: unknown) => {
                     setError(e instanceof Error ? e.message : 'No se pudo invitar.');

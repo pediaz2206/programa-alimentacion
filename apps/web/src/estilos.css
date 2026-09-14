@@ -274,9 +274,12 @@ h1, h2, h3 { font-family: "Bricolage Grotesque", Archivo, sans-serif; margin: 0;
 .campo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--linea); }
 .campo:last-child { border-bottom: 0; }
 .campo label { font-size: 14px; }
+/* 16px y 44px no son estética: menos de 16 y iOS hace zoom al enfocar el
+   control, y 44 es el área táctil mínima que pide el piso de accesibilidad.
+   Valía para todos los controles de formulario y estaban en 14 y 32. */
 .campo input[type="time"], .campo input[type="number"], .campo select {
-  font: inherit; font-family: "IBM Plex Mono", monospace; font-size: 14px;
-  padding: 6px 9px; border-radius: 8px; border: 1px solid var(--linea);
+  font: inherit; font-family: "IBM Plex Mono", monospace; font-size: 16px;
+  padding: 8px 9px; min-height: 44px; border-radius: 8px; border: 1px solid var(--linea);
   background: var(--superficie); color: var(--tinta);
 }
 .campo input:focus-visible, .campo select:focus-visible { outline: 2px solid var(--verde); outline-offset: 1px; }

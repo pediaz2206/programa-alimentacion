@@ -139,17 +139,39 @@ export async function revocarVinculo(sesion: Session | null, id: string): Promis
   if (error) throw error;
 }
 
-export async function invitarPaciente(sesion: Session | null, email: string): Promise<void> {
+/**
+ * Invita por email, declarando con que rol se sigue a esa persona.
+ *
+ * El rol NO es opcional y no tiene default: de el cuelga quien ve el detalle y
+ * las fotos, y el trigger `care_rel_columnas` lo vuelve inmutable apenas se
+ * crea. Un vinculo que nace mal nace mal para siempre.
+ *
+ * Antes esta funcion no lo escribia, asi que toda invitacion nueva quedaba en
+ * nulo y la nutricionista perdia las fotos, el resumen de consulta y los
+ * controles de publicar sobre un paciente que acababa de invitar.
+ */
+export async function invitarPaciente(
+  sesion: Session | null,
+  email: string,
+  rol: RolProfesional,
+): Promise<void> {
   const cliente = db(sesion);
   const { error } = await cliente.from('care_relationships').insert({
     professional_id: sesion!.user.id,
     patient_email: email.trim().toLowerCase(),
     status: 'pending',
+    rol,
   });
   if (error) {
     // El indice unico es la forma correcta de evitar duplicados; el mensaje
     // crudo de Postgres no le dice nada a nadie.
-    throw new Error(error.code === '23505' ? 'Ya invitaste a esa persona.' : error.message);
+    // 42501 es RLS: la policy exige que el rol declarado sea uno que la
+    // persona tenga. Pasa si alguien perdio el rol entre que abrio la pantalla
+    // y toco el boton.
+    throw new Error(
+      error.code === '23505' ? 'Ya invitaste a esa persona.'
+      : error.code === '42501' ? `No podés invitar como ${rol}: no tenés ese rol declarado.`
+      : error.message);
   }
 }
 

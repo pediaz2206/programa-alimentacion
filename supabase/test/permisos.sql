@@ -13,6 +13,12 @@ insert into public.profiles (id, display_name, email, is_professional) values
   ('22222222-2222-2222-2222-222222222222', 'Nutricionista', 'nutri@ejemplo.com', true),
   ('33333333-3333-3333-3333-333333333333', 'Ajeno', 'ajeno@ejemplo.com', true);
 
+-- Invitar exige declarar un rol que la persona tenga, asi que las dos
+-- profesionales del archivo lo tienen.
+insert into public.professional_roles (person_id, rol) values
+  ('22222222-2222-2222-2222-222222222222', 'nutricionista'),
+  ('33333333-3333-3333-3333-333333333333', 'nutricionista');
+
 insert into public.plans (id, patient_id, author_id, name) values
   ('aaaaaaaa-0000-0000-0000-000000000001',
    '11111111-1111-1111-1111-111111111111',
@@ -54,9 +60,9 @@ select pruebas.check('sin vinculo no hay acceso',
   public.has_care_access('11111111-1111-1111-1111-111111111111'), false);
 
 -- 2. Vinculo invitado pero no aceptado: sigue sin ver.
-insert into public.care_relationships (professional_id, patient_id, patient_email, status)
+insert into public.care_relationships (professional_id, patient_id, patient_email, status, rol)
 values ('22222222-2222-2222-2222-222222222222',
-        '11111111-1111-1111-1111-111111111111', 'paciente@ejemplo.com', 'pending');
+        '11111111-1111-1111-1111-111111111111', 'paciente@ejemplo.com', 'pending', 'nutricionista');
 select pruebas.check('vinculo pendiente no alcanza',
   public.has_care_access('11111111-1111-1111-1111-111111111111'), false);
 
@@ -82,21 +88,7 @@ select pruebas.check('ve el plan del paciente',
   exists (select 1 from public.plans where patient_id = '11111111-1111-1111-1111-111111111111'), true);
 select pruebas.check('ve el registro de comidas',
   exists (select 1 from public.meal_logs where patient_id = '11111111-1111-1111-1111-111111111111'), true);
--- Las fotos ademas miran el rol del vinculo, y nulo niega: los vinculos de
--- antes de que existiera la columna no ven fotos hasta que se les complete.
-select pruebas.check('un vinculo sin rol declarado no ve las fotos',
-  exists (select 1 from storage.objects where bucket_id = 'meal-photos'), false);
-
-set role postgres;
--- El rol lo pone el sistema al crear el vinculo, no una de las partes: la
--- preparacion lo escribe sin sesion, como lo hace la semilla.
-set role postgres;
-select set_config('test.uid', '', false);
-update public.care_relationships set rol = 'nutricionista'
-where patient_id = '11111111-1111-1111-1111-111111111111'
-  and professional_id = '22222222-2222-2222-2222-222222222222';
-set role authenticated;
-select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
+-- El vinculo se creo declarando `nutricionista`, asi que las fotos si.
 set role authenticated;
 
 select pruebas.check('ve la foto de la comida',
@@ -173,8 +165,8 @@ select set_config('test.uid', '11111111-1111-1111-1111-111111111111', false);
 -- 9. Invitar por email a alguien que todavia no reclamo la invitacion.
 set role authenticated;
 select set_config('test.uid', '33333333-3333-3333-3333-333333333333', false);
-insert into public.care_relationships (professional_id, patient_email, status)
-values ('33333333-3333-3333-3333-333333333333', 'PACIENTE@ejemplo.com', 'pending');
+insert into public.care_relationships (professional_id, patient_email, status, rol)
+values ('33333333-3333-3333-3333-333333333333', 'PACIENTE@ejemplo.com', 'pending', 'nutricionista');
 
 select pruebas.check('una invitacion sin reclamar no concede acceso',
   public.has_care_access('11111111-1111-1111-1111-111111111111'), false);
@@ -227,6 +219,8 @@ insert into public.profiles (id, display_name, email, is_professional, es_prueba
    'nutri@prueba.en-punto.local', true, true),
   ('55555555-5555-5555-5555-555555555555', 'Paciente de prueba',
    'pac@prueba.en-punto.local', false, true);
+insert into public.professional_roles (person_id, rol) values
+  ('44444444-4444-4444-4444-444444444444', 'nutricionista');
 set role authenticated;
 
 -- La funcion contesta bien aunque quien pregunta no pueda leer ese perfil.
@@ -244,8 +238,11 @@ set role postgres;
 create or replace function pruebas.puede_invitar(prof uuid, correo text)
 returns boolean language plpgsql as $$
 begin
-  insert into public.care_relationships (professional_id, patient_id, patient_email, status)
-  values (prof, null, correo, 'pending');
+  -- Con el rol que la persona tenga: invitar sin uno valido ahora se rechaza,
+  -- y esta funcion existe para probar OTRA cosa (el aislamiento de prueba).
+  insert into public.care_relationships (professional_id, patient_id, patient_email, status, rol)
+  values (prof, null, correo, 'pending',
+          (select pr.rol from public.professional_roles pr where pr.person_id = prof limit 1));
   return true;
 exception when insufficient_privilege then
   return false;
@@ -316,9 +313,12 @@ select pruebas.check('una cuenta real no reclama una invitacion de prueba',
 --     otro. Sin la policy de select, RLS niega por defecto y la pestana
 --     profesional no aparece para nadie: por eso se prueba que SI se ven.
 set role postgres;
+-- `on conflict` porque el bloque base ya le dio su rol a la nutricionista:
+-- invitar lo exige desde la 011.
 insert into public.professional_roles (person_id, rol) values
   ('22222222-2222-2222-2222-222222222222', 'nutricionista'),
-  ('44444444-4444-4444-4444-444444444444', 'entrenador');
+  ('44444444-4444-4444-4444-444444444444', 'entrenador')
+on conflict do nothing;
 set role authenticated;
 
 select set_config('test.uid', '22222222-2222-2222-2222-222222222222', false);
@@ -578,3 +578,41 @@ select pruebas.check('toda tabla de public tiene RLS activa',
   exists (select 1 from pg_tables t
           where t.schemaname = 'public' and not t.rowsecurity), false);
 set role authenticated;
+
+-- 17. Al invitar, el rol declarado tiene que ser uno que la persona tenga.
+--
+--     La 007 agrego la columna `rol` sin restringirla al insertar, y de esa
+--     columna cuelga `ve_fotos()`. Un entrenador podia crearse el vinculo
+--     declarandose nutricionista y con eso abrirse el detalle y las fotos. El
+--     trigger de la 008 le impide cambiarlo despues; esto le impide nacer con
+--     el equivocado.
+set role postgres;
+create or replace function pruebas.puede_invitar_como(prof uuid, correo text, r text)
+returns boolean language plpgsql as $$
+begin
+  insert into public.care_relationships (professional_id, patient_email, status, rol)
+  values (prof, correo, 'pending', r);
+  return true;
+exception when insufficient_privilege then
+  return false;
+end $$;
+grant execute on function pruebas.puede_invitar_como(uuid, text, text) to authenticated;
+set role authenticated;
+
+-- 66666666 es entrenador y solo entrenador.
+select set_config('test.uid', '66666666-6666-6666-6666-666666666666', false);
+select pruebas.check('el entrenador NO invita declarandose nutricionista',
+  pruebas.puede_invitar_como('66666666-6666-6666-6666-666666666666',
+                             'nuevo@ejemplo.com', 'nutricionista'), false);
+select pruebas.check('ni sin declarar rol',
+  pruebas.puede_invitar_como('66666666-6666-6666-6666-666666666666',
+                             'nuevo@ejemplo.com', null), false);
+select pruebas.check('pero si como entrenador, que es lo que es',
+  pruebas.puede_invitar_como('66666666-6666-6666-6666-666666666666',
+                             'nuevo@ejemplo.com', 'entrenador'), true);
+
+-- Y el vinculo que acaba de crear no le da fotos, porque nacio de entrenador.
+select pruebas.check('y ese vinculo nace sin acceso al detalle',
+  (select rol from public.care_relationships
+   where professional_id = '66666666-6666-6666-6666-666666666666'
+     and patient_email = 'nuevo@ejemplo.com') = 'entrenador', true);

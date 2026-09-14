@@ -299,6 +299,7 @@ export function App() {
         {pestana === 'pacientes' && (
           <Pacientes
             sesion={sesion}
+            roles={roles}
             pacienteAbierto={ruta.pacienteId}
             onAbrir={(id) => navegar({ pestana: 'pacientes', ...(id ? { pacienteId: id } : {}) })}
           />

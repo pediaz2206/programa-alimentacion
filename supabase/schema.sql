@@ -517,6 +517,11 @@ create policy care_rel_invite on public.care_relationships
     professional_id = auth.uid()
     and exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_professional)
     and public.es_cuenta_de_prueba(auth.uid()) = public.es_email_de_prueba(patient_email)
+    -- Y con un rol que la persona de verdad tenga. Nulo tambien se rechaza: un
+    -- vinculo sin rol es uno que despues nadie puede arreglar, porque el
+    -- trigger `care_rel_columnas` lo vuelve inmutable.
+    and exists (select 1 from public.professional_roles pr
+                where pr.person_id = auth.uid() and pr.rol = care_relationships.rol)
   );
 
 -- Aceptar, consentir y revocar. La condicion de prueba se repite acá porque
