@@ -1,6 +1,6 @@
 -- Que migraciones ya estan aplicadas en esta base.
 --
--- Solo lee: no cambia nada. Pegalo en el editor SQL de Supabase o corrÃ©lo con
+-- Solo lee: no cambia nada. Pegalo en el editor SQL de Supabase o correlo con
 -- psql antes de aplicar nada, para no adivinar por donde vas.
 --
 -- No hay tabla de migraciones aplicadas: cada fila pregunta por el objeto que
