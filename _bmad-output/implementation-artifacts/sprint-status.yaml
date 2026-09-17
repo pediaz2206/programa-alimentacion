@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-11-2026 14:00
-last_updated: 09-14-2026 15:32
+last_updated: 09-17-2026 12:29
 project: programa-alimentacion
 project_key: NOKEY
 tracking_system: file-system
@@ -75,14 +75,14 @@ action_items:
     action: "Corregir el criterio de aceptacion de la 1.5: el caso de los dos roles
       sobre el mismo paciente no es representable."
     owner: "planificacion"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-09-11-2026.md"
   - id: "epic-1-retro-item-4-corregir-el-criterio-de-aceptacion-de-la"
     epic: 1
     action: "Corregir el criterio de aceptacion de la 1.6: el filtro de consentimiento
       es de UX, no de NFR-1."
     owner: "planificacion"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-09-11-2026.md"
   - id: "epic-1-retro-item-5-decidir-el-criterio-de-mediciones-de-la"
     epic: 1
@@ -96,7 +96,7 @@ action_items:
     action: "Reconciliar AD-5 con ve_fotos(): la espina dice dos puertas de lectura
       y el codigo tiene tres."
     owner: "planificacion"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-09-11-2026.md"
   - id: "epic-1-retro-item-7-partir-pacientes-tsx-antes-de-la-epica-6"
     epic: 1
@@ -111,7 +111,7 @@ action_items:
       aviso de siembra vencida que se calla a los 28 dias, rolesDe que descarta el
       error, entrarConContrasena que aplasta el rate limit."
     owner: "desarrollo"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-09-11-2026.md"
   - id: "epic-1-retro-item-9-confirmar-con-silvestre-el-supuesto-de-f"
     epic: 1
