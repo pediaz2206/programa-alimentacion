@@ -68,7 +68,22 @@ Al crear cada cuenta, la semilla le asigna una contraseña al azar —24 bytes d
 
 A una cuenta que ya existe **no** se le cambia la contraseña: la semilla se
 corre seguido y rotar en silencio invalidaría lo que alguien ya tiene anotado.
-Para rotarlas, `--borrar` y volver a sembrar.
+
+Para rotarlas, `--rotar`:
+
+```bash
+... node supabase/semillas/sembrar.mjs --rotar
+```
+
+Le pone contraseña nueva a las cuentas que ya existen, sin tocar planes,
+registros ni vínculos. **Es lo que hace falta para las cuentas sembradas antes
+de que este script asignara contraseña**: a esas nunca se les puso ninguna, y
+una corrida normal las saltea sin decir nada. `--borrar` también sirve, pero se
+lleva los 28 días de historia sembrada.
+
+Rotar invalida la contraseña anterior, así que el chequeo de que haya dónde
+entregar las nuevas —TTY o `--credenciales`— corre **antes** de tocar nada. Si
+corriera al final, abortar dejaría las cuentas sin la vieja y sin la nueva.
 
 No quedan guardadas en ningún lado fuera de `auth.users`, hasheadas.
 

@@ -6,6 +6,7 @@
  *   node supabase/semillas/sembrar.mjs
  *
  *   ... sembrar.mjs --borrar     # deja la base como estaba
+ *   ... sembrar.mjs --rotar      # contrasena nueva a las cuentas que ya existen
  *
  * Usa la API de administracion porque crear filas en `auth.users` a mano es
  * fragil entre versiones de Supabase. La clave `service_role` se lee del
@@ -44,6 +45,11 @@ import { historiaDe } from './historia.mjs';
 const url = process.env['SUPABASE_URL'];
 const clave = process.env['SUPABASE_SERVICE_ROLE_KEY'];
 const borrar = process.argv.includes('--borrar');
+// Le pone contrasena nueva a las cuentas que YA existen. Hace falta para las
+// sembradas antes de que la semilla asignara contrasena: `cuentaDe` corta
+// apenas encuentra la cuenta, asi que esas no la reciben nunca y quedan sin
+// forma de entrar. Rotar no toca los datos; `--borrar` se lleva la historia.
+const rotar = process.argv.includes('--rotar');
 // Las cuentas de prueba no entran por Google, asi que sin esto no hay forma de
 // mirar la vista profesional: hace falta que una cuenta real sea la
 // profesional de los pacientes sembrados.
@@ -130,7 +136,18 @@ function contrasenaAlAzar() {
  * nuevo todo el tiempo. Para rotarlas, `--borrar` y volver a sembrar.
  */
 async function cuentaDe(correo, nombre, ya, credenciales) {
-  if (ya.has(correo)) return ya.get(correo);
+  if (ya.has(correo)) {
+    const id = ya.get(correo);
+    if (!rotar) return id;
+    // No se puede preguntarle a la API si esta cuenta tiene contrasena —el
+    // proveedor `email` figura igual cuando se creo sin una—, asi que rotar es
+    // explicito y no automatico: quien corre el script sabe si hace falta.
+    const contrasena = contrasenaAlAzar();
+    const { error } = await db.auth.admin.updateUserById(id, { password: contrasena });
+    if (error) throw error;
+    credenciales.set(correo, contrasena);
+    return id;
+  }
   const contrasena = contrasenaAlAzar();
   const { data, error } = await db.auth.admin.createUser({
     email: correo,
@@ -154,10 +171,37 @@ async function cuentaDe(correo, nombre, ya, credenciales) {
  * No se guardan en la base ni en ningun archivo del repo: viven en auth.users
  * hasheadas, y en la cabeza de quien las copio.
  */
+/**
+ * Que haya donde entregar las credenciales, ANTES de tocar nada.
+ *
+ * `entregar()` corre al final y aborta si no hay TTY ni `--credenciales`. Con
+ * `--rotar` eso es destructivo: rotar invalida la contrasena vieja, asi que
+ * abortar despues deja las cuentas sin la vieja y sin la nueva. La unica
+ * version correcta de ese chequeo es la que corre primero.
+ */
+function verificarEntrega() {
+  if (archivoCredenciales || process.stdout.isTTY) return;
+  console.error(`
+No hay terminal interactiva y no se pasó --credenciales=RUTA.
+
+  Las credenciales que genere este script no se van a poder mostrar, así que
+  no se toca nada: la salida redirigida termina en un archivo o en los logs de
+  un job, que los lee cualquiera con acceso al repositorio.
+
+  Corré de nuevo con --credenciales=/ruta/fuera/del/repo.txt
+  o desde una terminal.`);
+  process.exit(1);
+}
+
 function entregar(credenciales) {
   if (credenciales.size === 0) {
-    console.log('\nNo se crearon cuentas nuevas: las contraseñas anteriores siguen valiendo.');
-    console.log('Para rotarlas: --borrar y volver a sembrar.');
+    console.log(`
+No se creó ninguna cuenta, así que no hay credenciales nuevas que mostrar.
+
+  Si las cuentas ya existían y podés entrar con ellas, está todo bien.
+  Si NO tenés sus contraseñas —porque se sembraron antes de que este script
+  las asignara— volvé a correr con --rotar: les pone una nueva sin tocar los
+  datos. --borrar también sirve, pero se lleva la historia sembrada.`);
     return;
   }
 
@@ -170,21 +214,6 @@ function entregar(credenciales) {
     return;
   }
 
-  if (!process.stdout.isTTY) {
-    console.error(`
-No hay terminal interactiva y no se pasó --credenciales=RUTA.
-
-  Se crearon ${credenciales.size} cuentas con contraseña y no se van a imprimir:
-  la salida redirigida termina en un archivo o en los logs de un job, que los
-  lee cualquiera con acceso al repositorio.
-
-  Corré de nuevo con --credenciales=/ruta/fuera/del/repo.txt
-  o desde una terminal.
-
-  Las cuentas YA están creadas. Para rehacerlas: --borrar y volver a sembrar.`);
-    process.exit(1);
-  }
-
   console.log('\nCredenciales — se muestran una sola vez');
   for (const linea of lineas) console.log(`  ${linea}`);
   console.log(`
@@ -194,6 +223,7 @@ No hay terminal interactiva y no se pasó --credenciales=RUTA.
 }
 
 async function sembrar() {
+  verificarEntrega();
   const ya = await existentes();
   const ids = new Map();
   // Solo las cuentas creadas en esta corrida. A las que ya existían no se les
@@ -205,7 +235,8 @@ async function sembrar() {
     const correo = email(p.slug);
     const id = await cuentaDe(correo, p.nombre, ya, credenciales);
     ids.set(p.slug, id);
-    console.log(`  ${ya.has(correo) ? 'ya estaba' : 'creada  '}  ${p.slug}`);
+    const estado = !ya.has(correo) ? 'creada  ' : rotar ? 'rotada  ' : 'ya estaba';
+    console.log(`  ${estado}  ${p.slug}`);
   }
 
   const esProfesional = new Set(PROFESIONALES.map((p) => p.slug));
