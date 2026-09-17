@@ -36,13 +36,39 @@ export async function entrarConGoogle(): Promise<void> {
  * formulario. Lo que contiene a una cuenta de prueba son las politicas de
  * `006-aislar-cuentas-de-prueba.sql`, no esta bandera.
  */
+/** Por qué falló el ingreso. La pantalla decide qué conservar según esto. */
+export type MotivoDeFallo = 'credencial' | 'tasa' | 'servidor' | 'red';
+
+export class FalloDeIngreso extends Error {
+  constructor(public readonly motivo: MotivoDeFallo, mensaje: string) {
+    super(mensaje);
+    this.name = 'FalloDeIngreso';
+  }
+}
+
 export async function entrarConContrasena(email: string, contrasena: string): Promise<void> {
   if (!supabase) throw new Error('Falta configurar Supabase.');
   const { error } = await supabase.auth.signInWithPassword({ email, password: contrasena });
-  // Un mensaje que distinga "ese email no existe" de "esa contrasena esta
-  // mal" convierte la pantalla en un enumerador de cuentas. Es la misma razon
-  // por la que se invita por email sin resolverlo a un id.
-  if (error) throw new Error('Email o contraseña incorrectos.');
+  if (!error) return;
+
+  // Colapsar el 400 es a proposito: un mensaje que distinga "ese email no
+  // existe" de "esa contrasena esta mal" convierte la pantalla en un
+  // enumerador de cuentas. Es la misma razon por la que se invita por email
+  // sin resolverlo a un id.
+  //
+  // Colapsar TODO lo demas no: un limite de tasa o un 500 leidos como
+  // "contrasena incorrecta" hacen reintentar, y reintentar empeora el
+  // bloqueo. El objetivo antienumeracion solo pide el 400.
+  if (error.status === 429) {
+    throw new FalloDeIngreso('tasa', 'Demasiados intentos. Esperá un minuto y probá de nuevo.');
+  }
+  if (error.status != null && error.status >= 500) {
+    throw new FalloDeIngreso('servidor', 'El servidor no respondió. Probá de nuevo en un momento.');
+  }
+  if (error.status == null) {
+    throw new FalloDeIngreso('red', 'No se pudo conectar. Revisá la señal.');
+  }
+  throw new FalloDeIngreso('credencial', 'Email o contraseña incorrectos.');
 }
 
 export async function salir(): Promise<void> {

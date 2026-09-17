@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { entrarConContrasena } from '../lib/supabase.ts';
+import { entrarConContrasena, FalloDeIngreso } from '../lib/supabase.ts';
 
 /**
  * Acceso por email y contrasena, para recorrer la app sin una cuenta de
@@ -26,7 +26,13 @@ export function AccesoDePrueba() {
           setError(err instanceof Error ? err.message : 'No se pudo iniciar sesión.');
           // El email se conserva a proposito: reescribirlo en el teléfono
           // despues de cada intento es la parte que hace abandonar.
-          setContrasena('');
+          //
+          // Y la contraseña solo se borra si el problema ES la contraseña. Con
+          // un límite de tasa o un corte de red, borrarla obliga a reescribirla
+          // para reintentar, y reintentar es justo lo que empeora un bloqueo.
+          if (!(err instanceof FalloDeIngreso) || err.motivo === 'credencial') {
+            setContrasena('');
+          }
           setEntrando(false);
         });
       }}

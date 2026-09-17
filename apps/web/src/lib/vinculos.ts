@@ -69,8 +69,13 @@ export type RolProfesional = 'nutricionista' | 'entrenador';
  */
 export async function rolesDe(sesion: Session | null): Promise<RolProfesional[]> {
   if (!supabase || !sesion) return [];
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('professional_roles').select('rol').eq('person_id', sesion.user.id);
+  // Lanza en vez de devolver vacio. Sin esto, un 500 o un corte de red se leen
+  // como "no tiene roles" y la pestana profesional desaparece sin un mensaje:
+  // la nutricionista abre la app en el consultorio con mala senal y su
+  // herramienta de trabajo no esta.
+  if (error) throw error;
   return (data ?? []).map((f) => f['rol'] as RolProfesional);
 }
 

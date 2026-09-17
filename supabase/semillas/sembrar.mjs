@@ -225,11 +225,21 @@ No se creó ninguna cuenta, así que no hay credenciales nuevas que mostrar.
 async function sembrar() {
   verificarEntrega();
   const ya = await existentes();
-  const ids = new Map();
-  // Solo las cuentas creadas en esta corrida. A las que ya existían no se les
-  // toca la contraseña, así que no hay nada nuevo que entregar sobre ellas.
+  // Las credenciales viven solo en este mapa: la API no las devuelve despues.
+  // Cualquier error entre crear las cuentas y terminar —un vinculo que falla,
+  // la red— dejaria cuentas creadas con contrasenas que nadie vio nunca, y
+  // `cuentaDe` no se las cambia a una cuenta que ya existe. Por eso la entrega
+  // va en un `finally`: pase lo que pase, lo que se genero se muestra.
   const credenciales = new Map();
+  try {
+    await sembrarTodo(ya, credenciales);
+  } finally {
+    entregar(credenciales);
+  }
+}
 
+async function sembrarTodo(ya, credenciales) {
+  const ids = new Map();
   console.log('Cuentas');
   for (const p of [...PACIENTES, ...PROFESIONALES]) {
     const correo = email(p.slug);
@@ -348,8 +358,6 @@ VITE_LOGIN_PRUEBA=on. Ahí se puede recorrer la app como paciente, como
 nutricionista o como entrenador.
 
 Para deshacer:  node supabase/semillas/sembrar.mjs --borrar`);
-
-  entregar(credenciales);
 }
 
 /**

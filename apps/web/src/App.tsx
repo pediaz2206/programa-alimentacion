@@ -159,7 +159,10 @@ export function App() {
   useEffect(() => {
     if (!sesion) return;
     void registrarPerfil(sesion).catch(() => { /* se reintenta en el próximo ingreso */ });
-    void rolesDe(sesion).then(setRoles).catch(() => setRoles([]));
+    // Ante un error se conservan los roles que ya se sabían, con el mismo
+    // criterio que la lista de pacientes: un corte de red no es una razón para
+    // hacer desaparecer la pestaña de trabajo de alguien.
+    void rolesDe(sesion).then(setRoles).catch(() => { /* se reintenta al volver */ });
   }, [sesion]);
 
   // Lo que publica la nutricionista aparece sin recargar.

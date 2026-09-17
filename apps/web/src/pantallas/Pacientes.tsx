@@ -218,7 +218,18 @@ function Detalle({ paciente, pacientes, sesion, onVolver }: {
 function SiembraVencida({ registros }: { registros: { fecha: string }[] }) {
   const ultima = registros.reduce<string | null>(
     (max, r) => (max == null || r.fecha > max ? r.fecha : max), null);
-  if (ultima == null) return null;
+
+  // Sin registros el aviso se callaba, y era justo el caso peor: `misPacientes`
+  // solo trae los últimos 28 días, así que una siembra más vieja que eso llega
+  // vacía. El aviso desaparecía cuando la siembra estaba más vencida.
+  if (ultima == null) {
+    return (
+      <Aviso texto={
+        'Cuenta de prueba sin ningún registro en los últimos 28 días. La siembra es más ' +
+        'vieja que eso, así que todo va a verse en cero. Volvé a correr sembrar.mjs.'
+      } />
+    );
+  }
 
   const dias = Math.floor(
     (Date.parse(`${fechaISO()}T00:00:00Z`) - Date.parse(`${ultima}T00:00:00Z`)) / 86_400_000);
