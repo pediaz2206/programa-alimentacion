@@ -103,10 +103,25 @@ conflicto a discutir, no una excepción local.
 - **Binds:** FR-6..FR-15, todas las políticas de lectura y escritura clínica
 - **Prevents:** que sumar un rol que solo observa habilite, por omisión, publicar un
   plan de alimentación
-- **Rule:** `has_care_access(patient)` gobierna lectura y sigue valiendo para cualquier
-  rol vinculado y consentido. `puede_prescribir(patient)` es nueva, exige rol
-  `nutricionista`, y es la única puerta de escritura de `plans` y `plan_versions`.
-  Toda tabla clínica nueva declara con cuál de las dos se lee y se escribe.
+- **Rule:** son **tres** puertas, no dos. `has_care_access(patient)` gobierna la lectura
+  general y vale para cualquier rol vinculado y consentido: adherencia, proteína,
+  constancia, mediciones. `ve_fotos(patient)` gobierna la lectura del **detalle** —la
+  nota, la foto, el resumen de consulta— y exige que el vínculo declare
+  `nutricionista`. `puede_prescribir(patient)` es nueva, exige lo mismo, y es la única
+  puerta de escritura de `plans` y `plan_versions`. Toda tabla clínica nueva declara con
+  cuál de las tres se lee y se escribe.
+
+  > **Corregido el 2026-09-17.** Esta regla decía que `has_care_access` gobierna la
+  > lectura "y sigue valiendo para cualquier rol vinculado y consentido", y que toda
+  > tabla declara "con cuál de las **dos**". La épica 1 agregó `ve_fotos()` porque FR-21
+  > le niega el detalle al entrenador, y RLS concede filas y no columnas: la única forma
+  > de negar dos campos fue mudarlos a `meal_logs_detalle`, con su propia policy. La
+  > decisión es correcta; lo que estaba mal era este párrafo.
+  >
+  > **Deuda que esto deja:** `ve_fotos` es `has_care_access` más
+  > `and r.rol = 'nutricionista'`, y nada obliga a que sigan coherentes. Cuando la
+  > épica 2 escriba `puede_prescribir`, las tres tienen que quedar derivadas de una
+  > sola lectura del vínculo o van a decir cosas distintas del mismo vínculo.
 
 ### AD-6 — Una propuesta es privada entre quien la escribe y quien la decide
 

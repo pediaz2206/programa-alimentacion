@@ -318,8 +318,13 @@ como bugs:
   servidor un entrenador todavía podría insertar una versión del plan. En la
   pantalla no tiene por dónde, pero por API sí. Lo cierra `puede_prescribir()`.
 - `ve_fotos()` es una función chica al lado de `has_care_access`, no el corte
-  completo. Cuando la 2 parta la función madre, las dos tienen que quedar
-  coherentes o van a decir cosas distintas sobre el mismo vínculo.
+  completo. Cuando la 2 escriba `puede_prescribir()`, las **tres** tienen que
+  quedar derivadas de una sola lectura del vínculo o van a decir cosas distintas
+  del mismo vínculo. AD-5 ya está reconciliado con las tres puertas.
+- La 1 dejó dos triggers —`care_rel_columnas` y `profiles_marca_de_prueba`—
+  porque RLS decide filas y había que decidir columnas. La 2 no los puede
+  ignorar: `care_rel_columnas` vuelve `rol` inmutable, así que cualquier
+  migración de roles que la 2 quiera hacer corre sin sesión o no corre.
 
 ### Cobertura
 
@@ -545,17 +550,28 @@ forma más la condición de rol—, sin partir `has_care_access`, que es trabajo
 épica 2
 **And** los vínculos existentes tienen `rol` nulo hasta que la épica 2 los migre, y nulo
 niega: el default seguro es no ver la foto
-**And** una persona con los dos roles sobre el mismo paciente ve las fotos por su vínculo
-de nutricionista, porque la condición es del vínculo y no de la persona
+**And** la condición es del vínculo y no de la persona: alguien que sigue a uno como
+entrenador y a **otro** como nutricionista ve el detalle del segundo y no el del primero
+**And** sobre el **mismo** paciente no puede tener los dos roles: el índice
+`care_rel_unico_paciente` prohíbe dos vínculos entre las mismas dos personas
+*(corregido el 2026-09-17: este criterio decía que alguien con los dos roles sobre el
+mismo paciente veía las fotos por el de nutricionista. No es representable. Había una
+rama de código para resolverlo —borrada— y una aserción que "pasaba" cambiando el rol
+del único vínculo, que es otra cosa.)*
 
 **Given** que `misPacientes` filtra por `status = 'active'` y no por consentimiento
 **When** tengo un vínculo activo con alguien que todavía no consintió —el caso
 `entrenador-1 → paciente-c` de la semilla, puesto ahí para esto—
 **Then** esa persona no aparece en mi lista
-**And** el motivo no es cosmético: `patient_email` es columna de
-`care_relationships` y la ve el profesional por `care_rel_visible`, así que sin este
-filtro le estamos mostrando el email de alguien que no consintió nada (NFR-1)
-**And** RLS no lo tapa, porque el email está una capa antes que los datos de salud
+**And** el motivo es de UX y no de NFR-1: el `patient_email` que se vería es el que esa
+misma profesional escribió al invitar, así que no se le revela nada. Lo que se evita es
+una ficha con el nombre en blanco y todo en cero, que se lee como un error
+*(corregido el 2026-09-17: este criterio decía que sin el filtro "le estamos mostrando
+el email de alguien que no consintió (NFR-1)". Es falso, y un razonamiento de seguridad
+equivocado escrito acá se copia a las épicas 2 y 4, que rediseñan consentimiento y
+revocación.)*
+**And** el filtro vive en el cliente, así que no hay aserción que lo fije: lo que el
+servidor sí tapa —nombre, avatar, y todo dato clínico— lo cubre `has_care_access`
 
 **Given** un vínculo pendiente, revocado o sin consentir
 **When** intento abrir esa ficha
@@ -567,9 +583,9 @@ filtro le estamos mostrando el email de alguien que no consintió nada (NFR-1)
 **Then** hay una aserción que pide una foto como entrenador y espera que se la nieguen
 **And** otra que la pide como nutricionista del mismo paciente y espera que se la den
 
-**Given** una persona con los dos roles sobre el mismo paciente
-**When** abre la ficha
-**Then** ve la vista de nutricionista, que es la que incluye más
+**Given** la misma persona siguiendo a dos pacientes con roles distintos
+**When** abre cada ficha
+**Then** ve la vista que corresponde al rol de **ese** vínculo, no al mayor de sus roles
 
 ### Story 1.6: La pantalla dice qué es real y qué falta
 
